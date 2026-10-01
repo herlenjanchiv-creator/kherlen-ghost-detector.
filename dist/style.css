@@ -7,3 +7,5 @@
 .utterance-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.utterance-actions button,.question-controls button{font-size:12px;padding:8px 10px}.speech-mark{color:var(--cyan,#72edd5);border-left:2px solid currentColor;padding-left:9px}.question-controls{margin-top:16px}#questionStatus{font-size:13px;color:#72edd5;overflow-wrap:anywhere}
 
 #photoPreview[hidden]{display:none}#photoImage{display:block;max-width:100%;max-height:55vh;object-fit:contain;margin:12px auto}#photoDownload{display:inline-block;color:#72edd5;padding:10px}#photoStatus{overflow-wrap:anywhere}.metrics small{display:block;overflow-wrap:anywhere;line-height:1.5}
+
+.device-help a{color:#72edd5;display:inline-block;padding:8px 0}#deviceDiagnostics{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:300px;overflow:auto}.device-help{margin-bottom:12px}
