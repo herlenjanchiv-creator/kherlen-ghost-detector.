@@ -29,7 +29,7 @@ void main() {
     await tester.ensureVisible(find.text('µT / mG'));await tester.tap(find.text('µT / mG'));await tester.pump();
     expect(find.text('400.00'),findsOneWidget);
     for(final language in nativeLanguages.entries){
-      await tester.tap(find.byIcon(Icons.language));await tester.pump(const Duration(milliseconds:300));
+      await tester.tap(find.byIcon(Icons.language));await tester.pump();await tester.pump(const Duration(milliseconds:300));
       await tester.tap(find.text(language.value));await tester.pump();await tester.pump(const Duration(milliseconds:300));await tester.pump();
       expect(preferences.saved,language.key);
       expect(find.text(nativeText('REAL MAGNETIC MEASUREMENT',language.key)),findsOneWidget);
