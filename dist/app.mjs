@@ -1,3 +1,4 @@
+import {initLanguage} from './i18n.mjs';
 import {SoundEvents,concentratedSpectrum} from './sound.mjs';
 import {clamp,dbfs,acceleration,csv,MagneticBaseline,observedMagneticHz} from './core.mjs';
 const $=id=>document.getElementById(id), state={demo:false,camera:null,mic:null,ctx:null,analyser:null,facing:'environment',motion:null,motionAt:0,audio:null,session:null,rows:[],events:[],lastFlag:-Infinity,busy:false,token:0,recorder:null,chunks:[],recordStop:null};let graphRows=[],urls=[];
@@ -75,3 +76,5 @@ $('directOpen').href=window.location.href;
 $('diagnosticRefresh').onclick=renderDeviceDiagnostics;
 $('diagnosticCopy').onclick=async()=>{renderDeviceDiagnostics();const text=$('deviceDiagnostics').textContent;try{await navigator.clipboard.writeText(text);toast('Алдааны мэдээлэл хуулсан. Чатад paste хийнэ үү.')}catch{toast('Доорх алдааны мэдээллийг сонгож хуулна уу.')}};
 renderDeviceDiagnostics();
+
+initLanguage();
