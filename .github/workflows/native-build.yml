@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 concurrency:
   group: native-build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
@@ -39,7 +39,9 @@ jobs:
           path: ghost-lens-test.apk
           retention-days: 14
   ios:
-    runs-on: macos-14
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
