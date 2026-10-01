@@ -51,4 +51,14 @@ void main() {
     source.sample(DateTime.now(), 20, 0, 0);await Future<void>.delayed(const Duration(milliseconds: 10));expect(service.total, 20);
     service.dispose();await source.controller.close();
   });
+  test('baseline uses observed samples and cancels when stopped', () async {
+    final source=FakeSource();final service=MagnetometerService(primary:source,fallback:source);
+    await service.start();source.sample(DateTime.now(),0,0,40);await Future<void>.delayed(const Duration(milliseconds:10));
+    final timer=Timer.periodic(const Duration(milliseconds:20),(_)=>source.sample(DateTime.now(),0,0,40));
+    final baseline=await service.measureBaseline(seconds:.6);
+    expect(baseline,isNotNull);expect(baseline!.total,40);expect(baseline.sigma,0);expect(baseline.samples,greaterThanOrEqualTo(5));
+    final pending=service.measureBaseline(seconds:.6);await Future<void>.delayed(const Duration(milliseconds:50));await service.stop();expect(await pending,isNull);
+    timer.cancel();service.dispose();await source.controller.close();
+  });
+
 }

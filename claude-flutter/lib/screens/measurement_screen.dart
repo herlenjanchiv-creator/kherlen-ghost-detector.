@@ -4,16 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/magnetometer_service.dart';
 import 'splash_screen.dart';
+import '../localization/native_strings.dart';
+import '../localization/language_preferences.dart';
 
 /// Native measurement entry; no camera permission is required for magnetic readings.
 class MeasurementScreen extends StatefulWidget {
-  const MeasurementScreen({super.key});
+  const MeasurementScreen({super.key, this.magnetometer, this.languagePreferences, this.initialLanguage});
+  final MagnetometerService? magnetometer;
+  final LanguagePreferences? languagePreferences;
+  final String? initialLanguage;
   @override
   State<MeasurementScreen> createState() => _MeasurementScreenState();
 }
 
 class _MeasurementScreenState extends State<MeasurementScreen> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  final _mag = MagnetometerService();
+  late final MagnetometerService _mag;
+  late final LanguagePreferences _languagePreferences;
+  bool _alerts = false;
   bool _milligauss = false;
   String _language = 'MN';
   late final AnimationController _radar;
@@ -21,22 +28,39 @@ class _MeasurementScreenState extends State<MeasurementScreen> with WidgetsBindi
   int _lastAlert = -10000;
   bool _aboveThreshold = false;
   bool _inAR = false;
-  String tr(String mn, String en) => _language == 'MN' ? mn : _translations[_language]?[en] ?? en;
-  static const _translations = {
-    'ES': {'REAL MAGNETIC MEASUREMENT': 'MEDICIÓN MAGNÉTICA REAL', 'Baseline': 'Referencia', 'Accuracy': 'Precisión', 'Reconnect': 'Reconectar', 'Measure baseline · 3 seconds': 'Medir referencia · 3 segundos', 'Open camera / AR game': 'Abrir cámara / juego AR', 'Waiting for sensor data…': 'Esperando datos del sensor…', 'Magnetic field increase': 'Aumento del campo magnético', 'Magnetic reading': 'Lectura magnética', 'Visual effect · no source location': 'Efecto visual · sin ubicación de fuente'},
-    'ID': {'REAL MAGNETIC MEASUREMENT': 'PENGUKURAN MAGNETIK NYATA', 'Baseline': 'Acuan', 'Accuracy': 'Akurasi', 'Reconnect': 'Hubungkan ulang', 'Measure baseline · 3 seconds': 'Ukur acuan · 3 detik', 'Open camera / AR game': 'Buka kamera / game AR', 'Waiting for sensor data…': 'Menunggu data sensor…', 'Magnetic field increase': 'Peningkatan medan magnet', 'Magnetic reading': 'Pembacaan magnetik', 'Visual effect · no source location': 'Efek visual · bukan lokasi sumber'},
-  };
+  String tr(String mn, String en) => nativeText(en, _language);
+  void _selectLanguage(String value) {
+    if (!mounted || !nativeLanguages.containsKey(value)) return;
+    setState(() => _language = value);
+    unawaited(_languagePreferences.write(value));
+  }
+  Future<void> _loadLanguage() async {
+    final saved = await _languagePreferences.read();
+    if (!mounted) return;
+    if (saved != null) { setState(() => _language = saved); return; }
+    final selected = await showDialog<String>(context: context, barrierDismissible: false,
+      builder: (context) => AlertDialog(title: Text(nativeText('Choose language', _language)),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          for (final entry in nativeLanguages.entries) TextButton(onPressed: () => Navigator.pop(context, entry.key), child: Text(entry.value)),
+        ]))));
+    if (selected != null) _selectLanguage(selected);
+  }
   void _onMeasurement() {
     final elevated = _mag.status == MagStatus.live && (_mag.total ?? 0) > 120;
-    if (elevated && !_aboveThreshold && _alertClock.elapsedMilliseconds - _lastAlert >= 5000) {
+    if (_alerts && elevated && !_aboveThreshold && _alertClock.elapsedMilliseconds - _lastAlert >= 5000) {
       _lastAlert = _alertClock.elapsedMilliseconds;
       unawaited(HapticFeedback.mediumImpact());
+      unawaited(SystemSound.play(SystemSoundType.click));
     }
     _aboveThreshold = elevated;
   }
   @override
   void initState() {
     super.initState();
+    _mag = widget.magnetometer ?? MagnetometerService();
+    _languagePreferences = widget.languagePreferences ?? LanguagePreferences();
+    if (nativeLanguages.containsKey(widget.initialLanguage)) _language = widget.initialLanguage!;
+    else WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) unawaited(_loadLanguage()); });
     WidgetsBinding.instance.addObserver(this);
     _radar = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
     _mag.addListener(_onMeasurement);
@@ -60,11 +84,8 @@ class _MeasurementScreenState extends State<MeasurementScreen> with WidgetsBindi
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Ghost Lens'), actions: [
       PopupMenuButton<String>(icon: const Icon(Icons.language), initialValue: _language,
-        onSelected: (v) => setState(() => _language = v), itemBuilder: (_) => const [
-          PopupMenuItem(value: 'MN', child: Text('Монгол')),
-          PopupMenuItem(value: 'EN', child: Text('English')),
-          PopupMenuItem(value: 'ES', child: Text('Español')),
-          PopupMenuItem(value: 'ID', child: Text('Bahasa Indonesia')),
+        onSelected: _selectLanguage, itemBuilder: (_) => [
+          for (final entry in nativeLanguages.entries) PopupMenuItem(value: entry.key, child: Text(entry.value)),
         ]),
     ]),
     body: SafeArea(child: AnimatedBuilder(animation: _mag, builder: (context, _) {
@@ -98,12 +119,13 @@ class _MeasurementScreenState extends State<MeasurementScreen> with WidgetsBindi
         const SizedBox(height: 20),
         Text('${tr('Суурь', 'Baseline')}: ${value(_mag.baseline?.total)} $unit'),
         Text('σ: ${value(_mag.baseline?.sigma)} $unit · Δ: ${value(_mag.delta)} $unit'),
-        Text('${_mag.hz.toStringAsFixed(1)} Hz · ${tr('Нарийвчлал', 'Accuracy')}: ${sample?.accuracy.name ?? '—'}'),
+        Text('${_mag.hz.toStringAsFixed(1)} Hz · ${tr('Нарийвчлал', 'Accuracy')}: ${sample == null ? '—' : nativeText(sample.accuracy.name, _language)}'),
         const SizedBox(height: 12),
         FilledButton(onPressed: ready && !_mag.measuring ? () => _mag.measureBaseline() : null,
           child: Text(_mag.measuring ? '${(_mag.measureProgress * 100).round()}%' : tr('Суурь хэмжих · 3 секунд', 'Measure baseline · 3 seconds'))),
-        if (_mag.baselineWarning != null) Text(_mag.baselineWarning!),
+        if (_mag.baselineWarning != null) Text(nativeText('Review baseline conditions and repeat if needed.', _language)),
         OutlinedButton(onPressed: _mag.start, child: Text(tr('Дахин холбох', 'Reconnect'))),
+        SwitchListTile(contentPadding: EdgeInsets.zero, title: Text(nativeText('Alerts · sound / vibration', _language)), value: _alerts, onChanged: (value) => setState(() => _alerts = value)),
         const SizedBox(height: 20),
         Text(tr('X/Y/Z нь утасны тэнхлэгүүд. Эдгээр нь үүсгэгчийн байршил, сүнс эсвэл RF алдагдлыг тогтоохгүй.',
           'X/Y/Z are device axes. They do not locate a source, detect spirits or measure RF leakage.')),
