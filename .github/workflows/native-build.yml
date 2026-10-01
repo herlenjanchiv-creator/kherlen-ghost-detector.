@@ -1,0 +1,61 @@
+name: Native measurement build
+on:
+  push:
+    branches: [main]
+    paths: ['claude-flutter/**', '.github/workflows/native-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install pinned Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.35.7 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      - run: python3 claude-flutter/prepare_native.py "$RUNNER_TEMP/ghost_detector"
+      - name: Resolve, analyze and test
+        run: |
+          cd "$RUNNER_TEMP/ghost_detector"
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test
+      - name: Build Android test APK
+        run: |
+          cd "$RUNNER_TEMP/ghost_detector"
+          flutter build apk --debug
+          cp build/app/outputs/flutter-apk/app-debug.apk "$GITHUB_WORKSPACE/ghost-lens-test.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghost-lens-android-test
+          path: ghost-lens-test.apk
+          retention-days: 14
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install pinned Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.35.7 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      - run: python3 claude-flutter/prepare_native.py "$RUNNER_TEMP/ghost_detector"
+      - name: Resolve, test and compile unsigned iOS application
+        run: |
+          cd "$RUNNER_TEMP/ghost_detector"
+          flutter pub get
+          flutter test
+          flutter build ios --release --no-codesign
+          tar -czf "$GITHUB_WORKSPACE/ghost-lens-ios-unsigned.tar.gz" -C build/ios/iphoneos Runner.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghost-lens-ios-unsigned-not-installable
+          path: ghost-lens-ios-unsigned.tar.gz
+          retention-days: 14

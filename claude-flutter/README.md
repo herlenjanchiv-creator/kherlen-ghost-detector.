@@ -1,102 +1,31 @@
-# Сүнс илрүүлэгч v2 (Flutter)
+# Ghost Lens Native — бодит соронзон хэмжилт
 
-Зугаа цэнгэлийн AR апп. Сүнсний дүрс нь таны **Ghost.blend**-ийн
-"Animated Ghost Smoke" (BlenderKit) загвараас Blender Cycles-ээр рендерлэсэн
-48 фрейм анимейшн (`assets/ghost/ghost_sheet.png`).
+Эхлэхэд native magnetometer-ээс |B|, X/Y/Z µT; mG сонголт (1 µT = 10 mG), суурь/σ/Δ, бодитоор ажигласан Hz харагдана. Өгөгдөлгүй бол —; 1.5 секунд тасарвал LIVE унтарна. Камерын зөвшөөрөлгүйгээр соронзон хэмжиж болно. Камер/AR хэсэг тусдаа товчоор нээгдэнэ; AR тоглоомын утгууд зохиомол.
 
-## Суулгах
+## Build
 
-```bash
-flutter create --org mn.acs ghost_detector
+Flutter 3.35.7, Python 3 шаардлагатай.
+
+```sh
+python claude-flutter/prepare_native.py ./ghost_detector
 cd ghost_detector
-# Энэ хавтасны lib/, assets/, pubspec.yaml-ийг хуулж, хуучныг дарна
 flutter pub get
+flutter analyze --no-fatal-infos
+flutter test
+flutter build apk --debug
 ```
 
-### Android
-`android/app/src/main/AndroidManifest.xml` — `<application` -ийн дээр:
-```xml
-<uses-permission android:name="android.permission.CAMERA"/>
-<uses-permission android:name="android.permission.RECORD_AUDIO"/>
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
-<uses-feature android:name="android.hardware.camera" android:required="false"/>
-<uses-feature android:name="android.hardware.sensor.compass" android:required="false"/>
-```
-`<application ...>` таг дээр: `android:requestLegacyExternalStorage="true"` (Android 10-д галерейд хадгалахад)
+Windows: `claude-flutter/setup.ps1` мөн адил project үүсгэж, шалгалт хийнэ. Өмнөх project хавтас байвал өөр хоосон destination сонгоно; эх файлыг дарж устгахгүй.
 
-`android/app/build.gradle` (эсвэл `build.gradle.kts`):
-```
-minSdk = 21
-compileSdk = 35
-```
+iPhone/iPad: macOS + Xcode + CocoaPods хэрэгтэй. `flutter build ios --release --no-codesign` нь зөвхөн compile шалгана; unsigned Runner.app нь утсанд суулгах файл биш. Xcode Runner target дээр өөрийн Apple team сонгоод төхөөрөмжөө холбоод `flutter run --release` ашиглана. TestFlight/App Store-д Apple Developer signing болон тусдаа distribution шаардлагатай.
 
-### iOS
-`ios/Runner/Info.plist`:
-```xml
-<key>NSCameraUsageDescription</key>
-<string>Орчныг скан хийж сүнс хайхад камер шаардлагатай</string>
-<key>NSMicrophoneUsageDescription</key>
-<string>Видео бичлэгт дуу (EVP) бичихэд микрофон хэрэгтэй</string>
-<key>NSPhotoLibraryAddUsageDescription</key>
-<string>Зураг, видеог галерейд хадгална</string>
-```
-`ios/Podfile` — `platform :ios, '15.5'` болгож, `post_install` дотор:
-```ruby
-target.build_configurations.each do |config|
-  config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', 'PERMISSION_CAMERA=1', 'PERMISSION_MICROPHONE=1']
-end
-```
+## Автомат шалгалт
 
-### Ажиллуулах
-```bash
-flutter analyze
-flutter run --release      # бодит утсан дээр (эмулятор соронзон мэдрэгчгүй)
-```
+`.github/workflows/native-build.yml` Android debug APK, iOS unsigned compile, magnetometer regression tests хийнэ. Амжилттай run-ийн artifact-ыг авна. Workflow нэмэгдсэн нь build PASS гэсэн үг биш. Физик мэдрэгчийн acceptance test заавал үлдэнэ.
 
-## Бүтэц
+## Төхөөрөмжөөр шалгах
 
-| Файл | Үүрэг |
-|---|---|
-| `lib/screens/splash_screen.dart` | Эхлэл: 3D сүнс, утсыг хазайлгахад параллакс |
-| `lib/screens/scanner_screen.dart` | Камер, радар, EMF, профайл, горимууд |
-| `lib/game/ghost_engine.dart` | Сүнсний байрлал, ойртолт, уур, яриа |
-| `lib/services/orientation_service.dart` | Соронзон + хурдатгал → азимут, налуу, алхам, сэгсрэлт, тогтвортой эсэх |
-| `lib/services/camera_manager.dart` | Урд/арын камер, lifecycle, ML Kit царай, хөдөлгөөн мэдрэгч |
-| `lib/services/audio_fx.dart` | EMF товшилт, шивнээ, архирал, айлгах дуу |
-| `lib/services/data_logger.dart` | CSV лог, spike flag, 60 сек буфер |
-| `lib/services/evidence.dart` | Зураг нэгтгэх, галерейд хадгалах |
-| `lib/widgets/ghost_sprite.dart` | Sprite sheet тоглуулагч (crossfade loop, улаан туяа, нүд) |
-
-## Боломжууд
-
-**Сүнс хайх:** соронзон мэдрэгч + компасаар радар, EMF 5 LED, ойртоход профайл (нас, хүйс, уур), яриа, урд/арын камер.
-
-**Камер (Phasm Cam маягийн):**
-- Энгийн / Шөнийн / Бүрэн спектр горим, SLS маягийн лазер тор
-- 📷 Зураг — шүүлтүүр, сүнс, цагийн тэмдэг (огноо, EMF, µT, чиглэл) шингээж галерейн `GhostDetector` цомогт хадгална
-- ⏺ Видео бичлэг микрофонтой (EVP) — 720p / 1080p / 4K
-- Гэрэлтүүлэг нэмэх (+2.0 хүртэл), гар чийдэн, өргөн өнцгийн линз (байвал)
-
-**Өгөгдөл бүртгэгч (Solus маягийн):**
-- Секундэд 10 хэмжилт: соронзон орон, зөрүү, EMF, чичиргээ, хазайлт, камерын хөдөлгөөн → CSV файл (огноо/цагтай)
-- Сүүлийн 60 секундын шууд график
-- Автомат spike flag (мэдрэмж тохируулна) + гараар flag (⚑ товч)
-- Spike бүрт: дээд талд цагаан гэрэл, дуут дохио, чичиргээ, сонгосон бол гар чийдэн анивчина
-- Тохиргоо → «Лог файл хуваалцах» — Excel / Google Sheets-д нээнэ
-
-**Хөдөлгөөн мэдрэгч:** утсаа гуравхөл дээр эсвэл тавьж тогтворжуулахад автоматаар асна.
-
-## Тохируулах
-- `GhostEngine.hfov / vfov` — камерын харах өнцөг (утас бүрт бага зэрэг өөр)
-- `anomaly = magDeviation > 20` — соронзон аномалийн босго (µT)
-- `kPhrases` — сүнсний хэлэх үгс (сэтгэл санаа тус бүрээр)
-- `CameraManager._computeMotion` дахь `th` — хөдөлгөөн мэдрэгчийн мэдрэмж
-
-## Анхааруулга
-- Энэ нь зугаа цэнгэлийн апп. Сүнсний нас, хүйс, уур, яриа санамсаргүйгээр үүсгэгддэг.
-- "Шөнийн" ба "Бүрэн спектр" горим нь өнгөний шүүлтүүр. Утасны камер IR-cut шүүлтүүртэй тул жинхэнэ IR/full-spectrum (200–900 нм) биш.
-- Утсанд агаарын температур мэдрэгч бараг байдаггүй тул температур бүртгэхгүй.
-- Видео файлд сүнсний дүрс шингэхгүй (зөвхөн камерын бодит дүрс + дуу). Сүнс, цагийн тэмдэг зөвхөн зурагт шингэнэ.
-- Зураг, бичлэг хийх үед ML Kit болон хөдөлгөөн мэдрэгч түр зогсдог (олон утас зэрэг ажиллуулж чаддаггүй).
-- Соронзон мэдрэгч, хөдөлгөөн мэдрэгч бодит хэмжилт хийнэ.
-- Сүнсний загвар BlenderKit-ийн Royalty Free лицензтэй. Рендерлэсэн зургийг апп дотор ашиглах боломжтой ч эх .blend/.vdb файлыг тараахгүй.
+- µT X/Y/Z бодит утга ирэх; сул соронзон биетийг алсаас ойртуулахад өөрчлөгдөх.
+- Соронзтой утасны гэрийг салгаж, суурь 3 секунд хэмжих; хөдөлгөөнгүй байлгах.
+- Өгөгдөл тасрах, background/foreground, reconnect, camera/AR-аас буцах.
+- RF/Wi-Fi/микроволновкийн алдагдал хэмждэг багаж биш; сүнсийг нотлохгүй.

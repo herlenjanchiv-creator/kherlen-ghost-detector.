@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'screens/splash_screen.dart';
+import 'screens/measurement_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +29,7 @@ class GhostApp extends StatelessWidget {
           secondary: Color(0xFFFF3B3B),
         ),
       ),
-      home: const SplashScreen(),
+      home: const MeasurementScreen(),
     );
   }
 }

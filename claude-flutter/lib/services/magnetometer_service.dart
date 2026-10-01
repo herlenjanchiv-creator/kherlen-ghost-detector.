@@ -98,6 +98,18 @@ enum MagStatus { starting, live, unavailable }
 
 /// Бодит соронзон хэмжилт: шууд утга, суурь, Δ, босго, давтамж, 60 сек цонх.
 class MagnetometerService extends ChangeNotifier {
+  MagnetometerService({MagSource? primary, MagSource? fallback, DateTime Function()? clock})
+      : _primary = primary ?? PlatformMagSource(),
+        _fallback = fallback ?? SensorsPlusMagSource(),
+        _now = clock ?? DateTime.now;
+  final MagSource _primary, _fallback;
+  final DateTime Function() _now;
+  Timer? _timeout, _staleTimer;
+  bool _disposed = false;
+  int _generation = 0;
+  DateTime? _lastSampleAt;
+  void _notify() { if (!_disposed) notifyListeners(); }
+
   MagStatus status = MagStatus.starting;
   String? error;
   MagSource? source;
@@ -146,38 +158,88 @@ class MagnetometerService extends ChangeNotifier {
   bool get anomaly => delta != null && delta!.abs() > threshold;
 
   Future<void> start() async {
-    await _use(PlatformMagSource(), fallback: true);
+    if (_disposed) return;
+    baseline = null;
+    window.clear();
+    _lastWin = -1;
+    await _use(_primary, fallback: true);
+  }
+
+  Future<void> stop() async {
+    _generation++;
+    _timeout?.cancel();
+    _staleTimer?.cancel();
+    final sub = _sub;
+    _sub = null;
+    latest = null;
+    hz = 0;
+    measuring = false;
+    status = MagStatus.unavailable;
+    error = 'Мэдрэгч зогссон';
+    await sub?.cancel();
+    _notify();
   }
 
   Future<void> _use(MagSource src, {bool fallback = false}) async {
-    await _sub?.cancel();
+    if (_disposed) return;
+    final token = ++_generation;
+    _timeout?.cancel();
+    _staleTimer?.cancel();
+    final old = _sub;
+    _sub = null;
+    await old?.cancel();
+    if (_disposed || token != _generation) return;
     source = src;
+    latest = null;
+    _lastSampleAt = null;
+    _stamps.clear();
+    hz = 0;
+    error = null;
     status = MagStatus.starting;
+    _notify();
     var got = false;
-    _sub = src.samples().listen((s) {
-      got = true;
-      _onSample(s);
-    }, onError: (Object e) {
+    void fail(String message) {
+      if (_disposed || token != _generation) return;
+      _timeout?.cancel();
+      _staleTimer?.cancel();
       if (!got && fallback) {
-        _use(SensorsPlusMagSource()); // native код байхгүй/алдаатай
-      } else if (!got) {
-        status = MagStatus.unavailable;
-        error = 'Энэ төхөөрөмжид соронзон мэдрэгч олдсонгүй';
-        notifyListeners();
+        unawaited(Future<void>.microtask(() async {
+          if (!_disposed && token == _generation) await _use(_fallback);
+        }));
+        return;
       }
-    }, cancelOnError: true);
-    // 3 секундэд өгөгдөл ирэхгүй бол дараагийн эх үүсвэр
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!got && source == src) {
-        if (fallback) {
-          _use(SensorsPlusMagSource());
-        } else {
+      latest = null;
+      hz = 0;
+      status = MagStatus.unavailable;
+      error = message;
+      _notify();
+    }
+    try {
+      _sub = src.samples().listen((s) {
+        if (_disposed || token != _generation) return;
+        if (![s.x, s.y, s.z].every((v) => v.isFinite)) return;
+        got = true;
+        _timeout?.cancel();
+        _lastSampleAt = _now();
+        _onSample(s);
+      }, onError: (Object e) => fail('Соронзон мэдрэгчийн алдаа: $e'),
+         onDone: () => fail('Соронзон мэдрэгчийн өгөгдөл зогссон'), cancelOnError: true);
+      _timeout = Timer(const Duration(seconds: 3), () {
+        if (!got) fail('Соронзон мэдрэгчээс өгөгдөл ирсэнгүй');
+      });
+      _staleTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+        if (_disposed || token != _generation || _lastSampleAt == null) return;
+        if (_now().difference(_lastSampleAt!).inMilliseconds > 1500 && latest != null) {
+          latest = null;
+          hz = 0;
           status = MagStatus.unavailable;
-          error = 'Соронзон мэдрэгчээс өгөгдөл ирсэнгүй';
-          notifyListeners();
+          error = 'Өгөгдөл тасарсан — дахин холбох';
+          _notify();
         }
-      }
-    });
+      });
+    } catch (e) {
+      fail('Соронзон мэдрэгч нээгдсэнгүй: $e');
+    }
   }
 
   final List<MagSample> _measureBuf = [];
@@ -185,12 +247,14 @@ class MagnetometerService extends ChangeNotifier {
   void _onSample(MagSample s) {
     latest = s;
     status = MagStatus.live;
-    final ms = DateTime.now().millisecondsSinceEpoch;
+    error = null;
+    final ms = _now().millisecondsSinceEpoch;
     _stamps.add(ms);
     while (_stamps.isNotEmpty && ms - _stamps.first > 2000) {
       _stamps.removeAt(0);
     }
-    hz = _stamps.length / 2.0;
+    final span = _stamps.length > 1 ? (_stamps.last - _stamps.first) / 1000 : 0.0;
+    hz = span >= 0.5 ? (_stamps.length - 1) / span : 0;
     if (measuring) _measureBuf.add(s);
 
     final t = now;
@@ -203,48 +267,60 @@ class MagnetometerService extends ChangeNotifier {
     }
     if (ms - _lastNotify > 100) {
       _lastNotify = ms;
-      notifyListeners();
+      _notify();
     }
   }
 
   /// [seconds] секундын турш суурь хэмжинэ. Утсаа хөдөлгөөнгүй барих хэрэгтэй.
   Future<MagBaseline?> measureBaseline({double seconds = 3}) async {
     if (measuring || status != MagStatus.live) return null;
+    final token = _generation;
     measuring = true;
+    measureProgress = 0;
     baselineWarning = null;
     _measureBuf.clear();
     var stillAll = true;
     final steps = (seconds * 10).round();
     for (var i = 0; i < steps; i++) {
       await Future.delayed(const Duration(milliseconds: 100));
+      if (_disposed || token != _generation || status != MagStatus.live) {
+        measuring = false;
+        return null;
+      }
       measureProgress = (i + 1) / steps;
       if (isStill != null && !isStill!()) stillAll = false;
-      notifyListeners();
+      _notify();
     }
     measuring = false;
     final buf = List<MagSample>.from(_measureBuf);
     if (buf.length < 5) {
       baselineWarning = 'Хэмжилт хангалтгүй (${buf.length} утга)';
-      notifyListeners();
+      _notify();
       return null;
     }
     double mean(double Function(MagSample) f) => buf.map(f).reduce((a, b) => a + b) / buf.length;
     final mx = mean((s) => s.x), my = mean((s) => s.y), mz = mean((s) => s.z), mt = mean((s) => s.total);
     final sigma = math.sqrt(buf.map((s) => math.pow(s.total - mt, 2)).reduce((a, b) => a + b) / buf.length);
-    baseline = MagBaseline(DateTime.now().toUtc(), mx, my, mz, mt, sigma, buf.length, stillAll);
+    baseline = MagBaseline(_now().toUtc(), mx, my, mz, mt, sigma, buf.length, stillAll);
     if (!stillAll) baselineWarning = 'Хэмжилтийн үеэр утас хөдөлсөн — дахин хэмжих нь зүйтэй';
     if (sigma > 3) baselineWarning = 'Хэлбэлзэл их (σ ${sigma.toStringAsFixed(1)} µT) — ойр цахилгаан хэрэгсэл байж магадгүй';
     if (mt < 20 || mt > 70) {
       baselineWarning = (baselineWarning == null ? '' : '$baselineWarning. ') +
           'Нийт хүч ${mt.toStringAsFixed(0)} µT — дэлхийн ердийн 25–65 µT-ээс гадуур (төмөр ойр эсвэл тохируулга хэрэгтэй)';
     }
-    notifyListeners();
+    _notify();
     return baseline;
   }
 
   @override
   void dispose() {
+    _disposed = true;
+    _generation++;
+    _timeout?.cancel();
+    _staleTimer?.cancel();
     _sub?.cancel();
+    _sub = null;
+    latest = null;
     super.dispose();
   }
 }
