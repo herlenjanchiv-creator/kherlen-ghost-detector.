@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#040807">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%91%BB%3C/text%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Ghost Lens • AR симуляци</title><meta name="description" content="Камер дээрх зохиомол сүнсний AR симуляци, радар болон төхөөрөмж дээрх орчны хэмжилтийн бүртгэл.">
+<style>
+:root{--c:#39ffc8;--r:#ff3b3b;--a:#ffc23b;--bg:#040807;--sa-t:env(safe-area-inset-top);--sa-b:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{height:100%;background:var(--bg);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+.hidden{display:none!important}
+/* ---------- Splash ---------- */
+#splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;background:radial-gradient(ellipse at 50% 35%,#0f2a22 0%,#040807 70%);padding:calc(var(--sa-t) + 8px) 22px calc(var(--sa-b) + 18px)}
+#splashGhost{flex:1;min-height:0;width:100%}
+#splash h1{color:var(--c);font-size:30px;font-weight:900;letter-spacing:3px;text-shadow:0 0 18px rgba(57,255,200,.6)}
+#splash .sub{color:#fff8;letter-spacing:4px;font-size:12px;margin:4px 0 14px}
+.feat{display:flex;gap:10px;align-items:center;color:#ffffffb3;font-size:13px;margin:3px 0;width:100%;max-width:420px}
+.feat i{font-style:normal;width:20px;text-align:center}
+.mbtn{width:100%;max-width:420px;height:48px;margin-top:10px;border:1.5px solid var(--c);color:var(--c);font-weight:800;letter-spacing:1.5px;border-radius:14px;font-size:14px}
+body.measure #profile,body.measure #speech,body.measure #hint,body.measure .ghostOnly,body.measure #radar,body.measure #calib{display:none!important}
+body:not(.measure) #measBlock{display:none}
+#measBlock{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;width:118px;flex:none;font-size:11px}
+#measBlock div{color:#ffffff8a}#measBlock b{display:block;color:#fff;font-size:13px;white-space:nowrap}
+#startBtn{width:100%;max-width:420px;height:54px;margin-top:18px;background:var(--c);color:#000;font-weight:900;letter-spacing:2px;border-radius:14px;font-size:16px}
+.disc{color:#ffffff4d;font-size:10px;text-align:center;line-height:1.4;margin-top:12px;max-width:420px}
+/* ---------- App ---------- */
+#app{position:fixed;inset:0;overflow:hidden}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#video.mirror{transform:scaleX(-1)}
+#video.night{filter:grayscale(1) brightness(1.5) contrast(1.25) sepia(1) hue-rotate(65deg) saturate(2.2)}
+#video.spectrum{filter:saturate(1.7) hue-rotate(-35deg) contrast(1.1) brightness(1.1)}
+#tint{position:absolute;inset:0;pointer-events:none;background:rgba(0,26,18,.2)}
+#tint.spectrum{background:rgba(200,0,255,.18);mix-blend-mode:screen}
+#tint.night{background:transparent}
+#scene{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%);transition:background .4s}
+#vignette.angry{background:radial-gradient(ellipse at center,transparent 50%,rgba(255,30,30,.45) 100%)}
+#flash{position:absolute;inset:0;pointer-events:none;opacity:0}
+#alertbar{position:absolute;left:0;right:0;top:0;height:10px;background:#fff;box-shadow:0 0 30px 10px #fff;opacity:0;pointer-events:none}
+#hint{position:absolute;top:44%;color:var(--a);font-weight:bold;font-size:12px;text-align:center;pointer-events:none;white-space:pre-line}
+#hint .arr{font-size:34px;display:block;line-height:1}
+.ui{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;padding:calc(var(--sa-t) + 6px) 10px calc(var(--sa-b) + 8px);pointer-events:none}
+.ui > *{pointer-events:auto}
+.row{display:flex;align-items:center;gap:6px}
+.ib{width:40px;height:40px;border-radius:50%;background:#0008;display:flex;align-items:center;justify-content:center;font-size:18px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:20px;background:#0009;border:1px solid var(--c);color:var(--c);font-size:12px;font-weight:bold;letter-spacing:1.2px}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:currentColor}
+.mode{padding:5px 10px;border-radius:14px;background:#0008;border:1px solid #ffffff3d;color:#ffffffb3;font-size:11px}
+.mode.on{background:rgba(57,255,200,.25);border-color:var(--c);color:var(--c);font-weight:bold}
+.tog{width:30px;height:30px;border-radius:50%;background:#0008;border:1px solid #ffffff3d;font-size:14px;display:flex;align-items:center;justify-content:center}
+.tog.on{background:rgba(57,255,200,.25);border-color:var(--c)}
+.panel{background:rgba(0,0,0,.72);border:1.2px solid rgba(57,255,200,.8);border-radius:14px;box-shadow:0 0 12px rgba(57,255,200,.18);padding:12px}
+.panel.red{border-color:rgba(255,59,59,.85);box-shadow:0 0 12px rgba(255,59,59,.25)}
+.panel.amber{border-color:rgba(255,194,59,.85)}
+#profile .h{display:flex;align-items:center;gap:6px;color:var(--c);font-weight:bold;letter-spacing:1.5px}
+#profile .h span:last-child{margin-left:auto;color:#ffffffb3;font-weight:normal;letter-spacing:0;font-size:12px}
+#profile hr{border:none;border-top:1px solid #ffffff3d;margin:8px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.lab{color:#ffffff8a;font-size:11px}.val{font-size:14px;font-weight:600;margin-top:2px}
+.bar{height:7px;border-radius:4px;background:#ffffff1f;overflow:hidden;margin-top:6px}.bar>i{display:block;height:100%;width:0}
+.step{color:#ffffffb3;font-size:12px;margin-bottom:3px}
+.spacer{flex:1}
+#speech{display:flex;gap:10px;align-items:center;font-style:italic;font-size:16px;border-color:#ffffffb3}
+#speech.red{color:var(--r);font-weight:900;font-size:19px;border-color:var(--r)}
+.legend{display:flex;gap:10px;font-size:10px;color:#ffffffb3;align-items:center;flex-wrap:wrap}
+.legend b{display:inline-block;width:10px;height:3px;margin-right:4px;vertical-align:middle}
+#graph{width:100%;height:84px;display:block;margin-top:4px}
+#lastflag{font-size:11px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stamp{text-align:center;color:#ffb000;font:bold 12px ui-monospace,Menlo,monospace;text-shadow:0 0 3px #000;margin-bottom:6px}
+#stamp.rec{color:var(--r)}
+.capture{display:flex;justify-content:space-evenly;align-items:center;margin-bottom:8px}
+#shutter{width:64px;height:64px;border-radius:50%;border:4px solid #fff;background:#ffffff26;font-size:22px}
+#recBtn{width:52px;height:52px;border-radius:50%;border:3px solid var(--r);background:#0008;display:flex;align-items:center;justify-content:center}
+#recBtn i{display:block;width:34px;height:34px;border-radius:17px;background:var(--r);transition:all .2s}
+#recBtn.on i{width:20px;height:20px;border-radius:4px}
+.hud{display:flex;gap:12px;align-items:center}
+#radar{width:104px;height:104px;flex:none}
+.hudr{flex:1;min-width:0}
+.leds{display:flex;gap:4px;margin:3px 0 6px}
+.dchip{margin-left:6px;padding:1px 6px;border-radius:6px;font-size:12px;font-weight:bold;background:rgba(57,255,200,.18);color:var(--c)}.dchip.hot{background:rgba(255,59,59,.2);color:var(--r)}
+.mini{padding:3px 8px;border-radius:8px;border:1px solid #ffffff61;font-size:10px;margin-right:6px;flex:none}.leds i{flex:1;height:14px;border-radius:3px;opacity:.15}
+.leds i.on{opacity:1}
+.small{font-size:11px;color:#ffffff99;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#log{color:var(--c)}
+.tiny{font-size:9px;color:#ffffff3d}
+.overlay{position:absolute;left:28px;right:28px;top:38%;text-align:center;pointer-events:auto}
+/* sheets */
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:rgba(16,22,20,.97);border-radius:18px 18px 0 0;padding:16px 20px calc(var(--sa-b) + 16px);z-index:10;-webkit-overflow-scrolling:touch}
+.sheet h3{color:var(--c);font-size:16px;margin-bottom:12px}
+.sheet .sec{color:#ffffffb3;margin:14px 0 6px;font-size:14px}
+.sheet .note{color:#ffffff61;font-size:11px;margin-top:4px}
+.choice{display:inline-block;padding:7px 14px;border-radius:10px;border:1px solid #ffffff3d;margin-right:8px;font-size:13px}
+.choice.on{border-color:var(--c);color:var(--c);background:rgba(57,255,200,.15)}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ffffff14;font-size:14px}
+.srow small{display:block;color:#ffffff61;font-size:11px}
+input[type=range]{width:100%;accent-color:var(--c)}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--c)}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;background:#ffffff14;margin-top:10px;font-size:14px;text-align:center}
+.btn.p{background:var(--c);color:#000;font-weight:bold}
+.sheet input[type=text]{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #ffffff3d;background:#0006;color:#fff;font-size:16px;-webkit-user-select:text;user-select:text}
+.saved{border-top:1px solid #ffffff1f;padding:10px 0}.saved h4{font-size:14px}.saved small{display:block;color:#ffffff80;font-size:11px;margin:2px 0 6px}
+.saved button{padding:6px 10px;border-radius:8px;background:#ffffff14;margin:0 6px 6px 0;font-size:12px}.saved audio{width:100%;margin-top:4px}
+.evlist{list-style:none;font-size:12px;max-height:140px;overflow:auto;margin-top:8px}.evlist li{padding:4px 0;border-bottom:1px solid #ffffff10}.evlist small{color:#ffffff70;margin-left:6px}
+a.btn{color:#fff;text-decoration:none}
+#backdrop{position:absolute;inset:0;background:#0008;z-index:9}
+#evPreview{max-width:100%;max-height:48vh;display:block;margin:0 auto;border-radius:10px}
+#toast{position:absolute;left:50%;bottom:calc(var(--sa-b) + 200px);transform:translateX(-50%);background:#222e;padding:10px 16px;border-radius:12px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:20;max-width:88%;text-align:center}
+
+/* merged camera diagnostics + explicit simulation identity */
+#simBanner{position:absolute;top:0;left:0;right:0;z-index:4;padding:calc(var(--sa-t) + 7px) 12px 7px;background:#17231de8;border-bottom:1px solid #4c7460;font-size:8px;letter-spacing:.6px;color:#b3e6c5;display:flex;justify-content:space-between;gap:8px}#simBanner a{color:#e4ffd9;text-decoration:none;white-space:nowrap}.ui{padding-top:calc(var(--sa-t) + 36px)}.lab-link{font-size:12px;color:#9dd4bb;padding:14px;text-decoration:none}#cameraHelp{position:absolute;top:calc(var(--sa-t) + 124px);left:14px;right:14px;max-width:480px;margin:auto;z-index:8;padding:18px;background:#10201cf5;border:1px solid #59856a;border-radius:14px;box-shadow:0 8px 35px #0008}#cameraHelp strong{font-size:16px}#cameraHelp p{font-size:12px;color:#b7c8bb;line-height:1.6;margin:10px 0}#cameraRetry{background:var(--c);color:#07140d;width:100%;min-height:44px;border-radius:9px;font-size:13px;font-weight:700}#cameraRetry:disabled{opacity:.4}.mode{font-size:9px;padding:6px 8px}.chip{font-size:10px;letter-spacing:.5px}.tiny{color:#bed3c4;font-size:9px}.ib,.tog{border:1px solid #6d9c8550}button:focus-visible,a:focus-visible{outline:2px solid #ffc23b;outline-offset:3px}.disc{color:#b2c4b9;font-size:11px}.panel{border-color:#4c8569;box-shadow:none;background:#08130fc9}#splash h1{font-size:29px;letter-spacing:4px}#splash .sub{font-size:10px;letter-spacing:2px}#splash{background:radial-gradient(ellipse at 50% 35%,#133a29 0%,#040807 75%)}#calib{top:42%}@media(min-width:850px){.ui{max-width:500px;left:auto;padding-right:20px}.sheet{max-width:520px;left:auto;width:100%}#hint{left:20%;width:35%}#calib{right:auto;left:18%;width:32%}#simBanner{font-size:10px}.feat{max-width:450px}#cameraHelp{left:10%;right:auto;width:40%}}@media(max-height:720px){#radar{width:80px;height:80px}.panel{padding:8px}.capture{margin-bottom:5px}#graph{height:64px}#splash h1{font-size:24px}.feat{font-size:11px}.hud{gap:8px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ================= SPLASH ================= -->
+<div id="splash">
+  <canvas id="splashGhost"></canvas>
+  <h1>GHOST LENS</h1>
+  <div class="sub">AR SIMULATION • FIELD LAB</div>
+  <div class="feat"><i>🧭</i>Компасаар зохиомол AR дүрийг эргэн харна</div>
+  <div class="feat"><i>👻</i>Зохиомол дүр, профайл, ярианы симуляци</div>
+  <div class="feat"><i>🌙</i>Өнгөний шүүлтүүр, лазер торны дүрслэл</div>
+  <div class="feat"><i>📈</i>Мэдрэгчийн график, spike flag, CSV лог</div>
+  <div class="feat"><i>🔄</i>Урд, арын камер хоёуланд ажиллана</div>
+  <button id="startBtn">◉ КАМЕР АСААЖ ЭХЛЭХ</button>
+  <button id="measureBtn" class="mbtn">📏 ХЭМЖИЛТИЙН ГОРИМ</button>
+  <a class="lab-link" href="index.html">Бодит мэдрэгчийн лаборатори →</a><div class="disc">Зөвхөн зугаа цэнгэлийн зориулалттай. Мэдрэгчүүд бодит хэмжилт хийдэг ч сүнс илрүүлэх шинжлэх ухааны үндэслэлгүй; сүнсний дүр, профайл санамсаргүйгээр үүсгэгдэнэ.</div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden"><div id="simBanner"><span id="modeBanner">AR СИМУЛЯЦИ · ДҮР, РАДАР, ПРОФАЙЛ ХИЙМЭЛ</span> <a href="index.html">Лаборатори ↗</a></div><div id="cameraHelp" class="hidden"><strong id="cameraHelpTitle">Камер унтраалттай</strong><p id="cameraHelpText"></p><button id="cameraRetry">Камер дахин асаах</button></div>
+  <video id="video" playsinline muted autoplay></video>
+  <div id="tint"></div>
+  <canvas id="scene"></canvas>
+  <div id="vignette"></div>
+  <div id="flash"></div>
+  <div id="alertbar"></div>
+  <div id="hint" class="hidden"></div>
+
+  <div class="ui">
+    <div class="row">
+      <div id="status" class="chip"><span class="dot"></span><span id="statusText">ТОХИРУУЛЖ БАЙНА</span></div>
+      <span id="demoPill" class="chip hidden" style="color:#ff9a3b;border-color:#ff9a3b">ДЕМО</span>
+      <div class="spacer"></div>
+      <button class="ib" id="soundBtn" aria-label="Эффектийн дуу асаах">🔇</button>
+      <button class="ib" id="recalBtn">🎚️</button>
+      <button class="ib" id="flipBtn">🔄</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="mode on" data-mode="normal">Энгийн</button>
+      <button class="mode" data-mode="night">Ногоон шүүлтүүр</button>
+      <button class="mode" data-mode="spectrum">Нил шүүлтүүр</button>
+      <div class="spacer"></div>
+      <button class="tog on" id="graphTog">📈</button>
+      <button class="tog" id="laserTog">▦</button>
+      <button class="tog" id="micTog">🎤</button>
+      <span id="motionIcon" style="font-size:18px;opacity:.3">🏃</span>
+    </div>
+
+    <div id="profile" class="panel hidden" style="margin-top:8px"></div>
+
+    <div class="spacer"></div>
+
+    <div id="speech" class="panel hidden" style="margin-bottom:8px"><span>〰️</span><span id="speechText"></span></div>
+
+    <div id="graphPanel" class="panel" style="padding:8px;margin-bottom:8px">
+      <div class="legend">
+        <span><b style="background:#39ffc8"></b>Соронзон |Δ|</span>
+        <span><b style="background:#ffc23b"></b>Чичиргээ</span>
+        <span><b style="background:#ff5ca8"></b>Хөдөлгөөн</span>
+        <span><b style="background:#b9b9ff"></b>Хазайлт</span>
+        <span><b style="background:#fff"></b>Дуу</span>
+        <span style="margin-left:auto;color:#ffffff61" id="rows">0 мөр</span>
+      </div>
+      <canvas id="graph"></canvas>
+      <div id="lastflag"></div>
+    </div>
+
+    <div id="stamp"></div>
+    <div class="capture">
+      <button class="ib" id="setBtn">⚙️</button>
+      <button class="ib" id="flagBtn">⚑</button>
+      <button class="ib" id="sessBtn">📁</button>
+      <button id="shutter">📷</button>
+      <button id="recBtn"><i></i></button>
+    </div>
+
+    <div class="panel hud" id="hud">
+      <canvas id="radar"></canvas>
+      <div id="measBlock">
+        <div>Чиглэл<b id="mHead">—</b></div><div>Налуу<b id="mPitch">—</b></div>
+        <div>Чичиргээ<b id="mVib">—</b></div><div>Хөдөлгөөн<b id="mMot">—</b></div>
+        <div style="grid-column:span 2">Дуу<b id="mAud">—</b></div>
+      </div>
+      <div class="hudr">
+        <div id="magPanel">
+          <div class="row" style="font-size:11px;color:#ffffffb3">Соронзон орон<span class="spacer"></span><b id="magTotal" style="color:#fff;font-size:15px">—</b><span id="magDelta" class="dchip hidden"></span></div>
+          <div class="small" id="magXYZ"></div>
+          <div class="small" id="magBase"></div>
+          <div class="row" style="margin-top:3px"><button class="mini" id="magBaseBtn">Суурь хэмжих</button><span class="small" id="magWarn" style="color:var(--a);white-space:normal"></span></div>
+        </div>
+        <div class="tiny ghostOnly" style="margin-top:6px;color:#ffffff80">Сүнсний дохио (тоглоом)</div>
+        <div class="leds ghostOnly" id="leds"><i style="background:#3bff6a"></i><i style="background:#b6ff3b"></i><i style="background:#ffe53b"></i><i style="background:#ff9a3b"></i><i style="background:#ff3b3b"></i></div>
+        <div class="small" id="headLine">Чиглэл: —</div>
+        <div class="small" id="audioLine">Дуу: микрофон унтраалттай</div>
+        <div class="small" id="log"></div>
+        <div class="tiny" id="footNote">Зугаа цэнгэлийн зориулалттай</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="calib" class="overlay panel amber">
+    <div style="font-size:34px">🧭</div>
+    <div id="calibText" style="margin:8px 0 12px;font-size:14px">Мэдрэгчүүдийг тохируулж байна.<br>Утсаа хөдөлгөлгүй барина уу...</div>
+    <div class="bar"><i id="calibBar" style="background:var(--a)"></i></div>
+    <button class="btn hidden" id="calibDemo">Демо горимоор турших</button>
+  </div>
+
+  <div id="backdrop" class="hidden"></div>
+  <div id="settings" class="sheet hidden"></div>
+  <div id="evidence" class="sheet hidden"></div>
+  <div id="sessions" class="sheet hidden"></div>
+  <div id="toast"></div>
+</div>
+
+<script>
+'use strict';
+// =====================================================================
+//  Сүнс илрүүлэгч — вэб хувилбар (Flutter аппын логиктой ижил)
+// =====================================================================
+const $ = id => document.getElementById(id);
+const HFOV = 58, VFOV = 78;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const angleDiff = (a, b) => ((a - b + 540) % 360) - 180;
+const two = n => String(n).padStart(2, '0');
+const stampNow = () => { const d = new Date(); return `${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`; };
+function camErr(e) {
+  return ({ NotAllowedError: 'Зөвшөөрөл өгөөгүй. Safari → Тохиргоо → Camera/Microphone-ийг «Allow» болгоно уу.',
+    NotFoundError: 'Төхөөрөмж олдсонгүй.', NotReadableError: 'Камер/микрофоныг өөр апп ашиглаж байж болно.',
+    OverconstrainedError: 'Энэ төхөөрөмж хүссэн камерыг дэмжихгүй.', SecurityError: 'HTTPS хаягаар нээнэ үү.' })[e && e.name] || (e && e.message) || 'Алдаа гарлаа.';
+}
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// ---------------------------------------------------------------- sprite
+const SPRITE_META = {"cols":8,"count":24,"frameW":92,"frameH":360,"crossfade":5,"fps":6,"heads":[[0.5,0.454],[0.578,0.507],[0.593,0.571],[0.534,0.618],[0.476,0.646],[0.412,0.666],[0.378,0.641],[0.378,0.576],[0.396,0.603],[0.41,0.642],[0.42,0.692],[0.425,0.703],[0.424,0.667],[0.426,0.646],[0.423,0.651],[0.425,0.666],[0.444,0.701],[0.466,0.701],[0.481,0.684],[0.473,0.646],[0.446,0.591],[0.406,0.525],[0.358,0.451],[0.414,0.45]]};
+const Sprite = { img: null, meta: null, off: null, offCtx: null, ready: false };
+async function loadSprite() {
+  const meta = SPRITE_META;
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'ghost.webp'; });
+  Sprite.meta = meta; Sprite.img = img;
+  Sprite.off = document.createElement('canvas');
+  Sprite.off.width = meta.frameW; Sprite.off.height = meta.frameH;
+  Sprite.offCtx = Sprite.off.getContext('2d');
+  Sprite.ready = true;
+}
+function drawGhost(ctx, cx, cy, h, t, opacity = 1, rage = 0, glow = .5) {
+  if (!Sprite.ready || opacity <= .02) return;
+  const m = Sprite.meta, w = h * m.frameW / m.frameH;
+  const loop = m.count - m.crossfade, f = (t * m.fps) % loop, i = Math.floor(f);
+  const main = i + m.crossfade;
+  let blend = 0, next = null;
+  if (main >= loop) { next = main - loop; blend = ((main - loop) + (f - i)) / m.crossfade; }
+  const x = cx - w / 2, y = cy - h / 2;
+  const glowCol = rage > .5 ? `rgba(255,30,30,${.9})` : `rgba(57,255,200,${.9})`;
+  const one = (idx, a) => {
+    if (a <= .01) return;
+    const oc = Sprite.offCtx, sx = (idx % m.cols) * m.frameW, sy = Math.floor(idx / m.cols) * m.frameH;
+    oc.globalCompositeOperation = 'source-over';
+    oc.clearRect(0, 0, m.frameW, m.frameH);
+    oc.drawImage(Sprite.img, sx, sy, m.frameW, m.frameH, 0, 0, m.frameW, m.frameH);
+    if (rage > .01) { oc.globalCompositeOperation = 'source-atop'; oc.fillStyle = `rgba(255,40,40,${rage * .85})`; oc.fillRect(0, 0, m.frameW, m.frameH); }
+    ctx.save();
+    ctx.globalAlpha = clamp(a, 0, 1);
+    if (glow > 0) { ctx.shadowColor = glowCol; ctx.shadowBlur = 18 * glow * (h / 500 + .5); }
+    ctx.drawImage(Sprite.off, x, y, w, h);
+    ctx.restore();
+  };
+  one(main, opacity * (1 - blend));
+  if (next !== null) one(next, opacity * blend);
+  if (rage > .25) {
+    const hd = m.heads[Math.min(main, m.heads.length - 1)];
+    const ex = x + hd[0] * w, ey = y + hd[1] * h, r = w * .035, ea = clamp((rage - .25) / .75, 0, 1) * opacity;
+    for (const dx of [-r * 1.7, r * 1.7]) {
+      const g = ctx.createRadialGradient(ex + dx, ey, 0, ex + dx, ey, r * 3);
+      g.addColorStop(0, `rgba(255,32,32,${ea})`); g.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ex + dx, ey, r * 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,224,224,${ea})`; ctx.beginPath(); ctx.ellipse(ex + dx, ey, r * .7, r * .4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
+// ---------------------------------------------------------------- splash
+let splashRun = true, tilt = { x: 0, y: 0 };
+function splashLoop(ts) {
+  if (!splashRun) return;
+  const c = $('splashGhost'), dpr = devicePixelRatio || 1;
+  const W = c.clientWidth, H = c.clientHeight;
+  if (c.width !== W * dpr) { c.width = W * dpr; c.height = H * dpr; }
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const t = ts / 1000, appear = clamp(t / 2, 0, 1);
+  drawGhost(ctx, W / 2 + tilt.x * 26, H / 2 + tilt.y * 16, H * .98, t, appear, 0, .8);
+  requestAnimationFrame(splashLoop);
+}
+window.addEventListener('deviceorientation', e => {
+  if (!splashRun || e.gamma == null) return;
+  tilt.x += (clamp(e.gamma / 45, -1, 1) - tilt.x) * .1;
+  tilt.y += (clamp((e.beta - 60) / 45, -1, 1) - tilt.y) * .1;
+});
+
+// ---------------------------------------------------------------- sensors
+const S = {
+  hasOri: false, abs: false, heading: 0, pitch: 0, rawHeading: 0, offset: null,
+  g: { x: 0, y: 0, z: 9.81 }, hasAcc: false, stillSince: performance.now(), vibPeak: 0,
+  lastStep: 0, lastShake: 0, above: false,
+  mag: null, magAvail: false, magnitude: 0,
+};
+function oriFromEuler(alpha, beta, gamma) {
+  const d = Math.PI / 180, a = alpha * d, b = beta * d, g = gamma * d;
+  const cX = Math.cos(b), cY = Math.cos(g), cZ = Math.cos(a), sX = Math.sin(b), sY = Math.sin(g), sZ = Math.sin(a);
+  const m13 = cY * sZ * sX + cZ * sY, m23 = sZ * sY - cZ * cY * sX, m33 = cX * cY;
+  const east = -m13, north = -m23, up = -m33; // арын камерын чиглэл (-Z)
+  let h = Math.atan2(east, north) * 180 / Math.PI; if (h < 0) h += 360;
+  return { heading: h, pitch: Math.asin(clamp(up, -1, 1)) * 180 / Math.PI };
+}
+function onOrientation(e, absolute) {
+  if (e.alpha == null) return;
+  if (S.abs && !absolute) return;           // Android: absolute event илүү
+  if (absolute) S.abs = true;
+  const o = oriFromEuler(e.alpha, e.beta, e.gamma);
+  S.rawHeading = o.heading;
+  // iOS: alpha нь харьцангуй → webkitCompassHeading-ээр хойд зүгт тохируулна
+  if (typeof e.webkitCompassHeading === 'number' && Math.abs(e.beta) > 50 && Math.abs(e.beta) < 130) {
+    const target = angleDiff(e.webkitCompassHeading, o.heading);
+    S.offset = S.offset == null ? target : S.offset + angleDiff(target, S.offset) * .05;
+  }
+  const h = (o.heading + (S.offset || 0) + 360) % 360;
+  S.heading = S.hasOri ? (S.heading + angleDiff(h, S.heading) * .35 + 360) % 360 : h;
+  S.pitch = o.pitch;
+  S.hasOri = true;
+}
+window.addEventListener('deviceorientationabsolute', e => onOrientation(e, true));
+window.addEventListener('deviceorientation', e => onOrientation(e, false));
+
+const stepCbs = [], shakeCbs = [];
+window.addEventListener('devicemotion', e => {
+  const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
+  const raw = { x: a.x, y: a.y, z: a.z }, now = performance.now();
+  const dx = raw.x - S.g.x, dy = raw.y - S.g.y, dz = raw.z - S.g.z;
+  if (!S.hasAcc || Math.hypot(dx, dy, dz) > .35) S.stillSince = now;
+  const k = S.hasAcc ? .12 : 1;
+  S.g = { x: S.g.x + dx * k, y: S.g.y + dy * k, z: S.g.z + dz * k };
+  S.hasAcc = true;
+  const dyn = Math.hypot(raw.x, raw.y, raw.z) - 9.81;
+  if (Math.abs(dyn) > S.vibPeak) S.vibPeak = Math.abs(dyn);
+  if (Math.abs(dyn) > 14 && now - S.lastShake > 900) { S.lastShake = now; shakeCbs.forEach(f => f()); }
+  else if (!S.above && dyn > 1.6 && now - S.lastStep > 320 && now - S.lastShake > 900) { S.above = true; S.lastStep = now; stepCbs.forEach(f => f()); }
+  if (dyn < .5) S.above = false;
+});
+// Демо горим: мэдрэгчгүй компьютер дээр хиймэл чиглэл/хөдөлгөөн (тодорхой тэмдэглэгдэнэ)
+const DEMO = { on: false, t: 0 };
+function demoTick(dt) {
+  DEMO.t += dt; const t = DEMO.t;
+  S.heading = (S.heading + dt * (14 + 10 * Math.sin(t * .2)) + 360) % 360; S.pitch = 4 * Math.sin(t * .7);
+  S.hasOri = true; S.hasAcc = true; S.stillSince = performance.now() - 5000;
+  S.vibPeak = Math.max(S.vibPeak, Math.abs(Math.sin(t * .9)) * .4 + (Math.sin(t * .31) > .985 ? 3 : 0));
+}
+const isStill = () => S.hasAcc && performance.now() - S.stillSince > 1500;
+const takeVib = () => { const v = S.vibPeak; S.vibPeak = 0; return v; };
+function viewHeading(front) { return front ? (S.heading + 180) % 360 : S.heading; }
+function viewPitch(front) { return front ? -S.pitch : S.pitch; }
+// ---------------------------------------------------------------- бодит магнитометр
+// Generic Sensor API (Android Chrome — заримдаа chrome://flags-д "Generic Sensor Extra Classes" асаах хэрэгтэй).
+// iPhone Safari энэ API-г дэмждэггүй → тоо харуулахгүй, iPhone апп / гадаад хэмжигч санал болгоно.
+const MAG = {
+  status: 'checking', reason: '', x: 0, y: 0, z: 0, total: 0, hz: 0, stamps: [], sensor: null,
+  baseline: null, measuring: false, prog: 0, buf: [], warn: '', sens: .5, autoTried: false,
+  get live() { return this.status === 'live' && performance.now() - (this.lastReading || 0) < 1500; },
+  get delta() { return this.live && this.baseline ? this.total - this.baseline.total : null; },
+  get threshold() { const sg = this.baseline ? this.baseline.sigma : 1; return Math.max(6 - 4 * this.sens, (8 - 5 * this.sens) * sg); },
+  get anomaly() { const d = this.delta; return d != null && Math.abs(d) > this.threshold; },
+};
+function magUnavailable(reason) { MAG.status = 'unavailable'; MAG.reason = reason; S.magAvail = false; }
+async function startMagnetometer() {
+  const noApi = isIOS ? 'iPhone Safari соронзон мэдрэгч (µT) уншдаггүй. Бодит утгыг iPhone апп (Flutter) эсвэл гадаад хэмжигчээр авна.'
+    : 'Энэ браузер Magnetometer API дэмжихгүй. Мэдрэгчтэй, дэмждэг браузер эсвэл native app ашиглана уу.';
+  if (!('Magnetometer' in window)) return magUnavailable(noApi);
+  try {
+    if (navigator.permissions) { const p = await navigator.permissions.query({ name: 'magnetometer' }).catch(() => null); if (p && p.state === 'denied') return magUnavailable('Магнитометрийн зөвшөөрөл хаалттай.'); }
+    const m = new Magnetometer({ frequency: 20 });
+    m.addEventListener('reading', () => {
+      if (![m.x,m.y,m.z].every(Number.isFinite)) return;
+      MAG.lastReading = performance.now(); MAG.x = m.x; MAG.y = m.y; MAG.z = m.z; MAG.total = Math.hypot(m.x, m.y, m.z);
+      MAG.status = 'live'; S.magAvail = true; S.magnitude = MAG.total;
+      const now = performance.now(); MAG.stamps.push(now); while (MAG.stamps.length && now - MAG.stamps[0] > 2000) MAG.stamps.shift(); MAG.hz = MAG.stamps.length / 2;
+      if (MAG.measuring) MAG.buf.push({ x: m.x, y: m.y, z: m.z, t: MAG.total });
+    });
+    m.addEventListener('error', e => magUnavailable('Магнитометр алдаа: ' + (e.error && e.error.name || 'тодорхойгүй')));
+    m.start(); MAG.sensor = m;
+    setTimeout(() => { if (MAG.status === 'checking') magUnavailable(noApi); }, 3000);
+  } catch (e) { magUnavailable(noApi); }
+}
+async function measureMagBaseline() {
+  if (!MAG.live || MAG.measuring) return;
+  MAG.measuring = true; MAG.buf = []; MAG.warn = ''; let still = true;
+  for (let i = 0; i < 30; i++) { await new Promise(r => setTimeout(r, 100)); MAG.prog = (i + 1) / 30; if (!isStill()) still = false; }
+  MAG.measuring = false;
+  const b = MAG.buf; if (b.length < 5) { MAG.warn = 'Хэмжилт хангалтгүй'; return; }
+  const mean = k => b.reduce((a, v) => a + v[k], 0) / b.length;
+  const mt = mean('t'), sigma = Math.sqrt(b.reduce((a, v) => a + (v.t - mt) ** 2, 0) / b.length);
+  MAG.baseline = { x: mean('x'), y: mean('y'), z: mean('z'), total: mt, sigma, n: b.length, still, utc: new Date().toISOString() };
+  if (!still) MAG.warn = 'Хэмжилтийн үеэр утас хөдөлсөн — дахин хэмжих нь зүйтэй';
+  if (sigma > 3) MAG.warn = `Хэлбэлзэл их (σ ${sigma.toFixed(1)} µT) — ойр цахилгаан хэрэгсэл байж магадгүй`;
+  if (mt < 20 || mt > 70) MAG.warn = (MAG.warn ? MAG.warn + '. ' : '') + `Нийт хүч ${mt.toFixed(0)} µT — ердийн 25–65 µT-ээс гадуур`;
+  L.note(`BASELINE: ${mt.toFixed(2)} µT ±${sigma.toFixed(2)} (${b.length} утга${still ? '' : ', утас хөдөлсөн'})`);
+  E.addLog(`Суурь: ${mt.toFixed(1)} µT ±${sigma.toFixed(2)}`);
+}
+
+// ---------------------------------------------------------------- engine
+const PHRASES = {
+  calm: ['Би энд олон жил амьдарсан...', 'Чи намайг харж байна уу?', 'Энэ байшин миний гэр байсан.', 'Айх хэрэггүй... би зүгээр л ажиглаж байна.', 'Цонхоор гэрэл тусахыг харах дуртай.', 'Хэн нэгэн намайг санаж байгаа болов уу...'],
+  sad: ['Би гэртээ харьж чадахгүй байна...', 'Миний гэр бүл хаана байна?', 'Хүйтэн байна... их хүйтэн.', 'Намайг мартчихсан уу?', 'Би хүлээсээр л байна...', 'Ганцаараа байхаас залхаж байна.'],
+  irritated: ['Чи яагаад энд ирсэн юм?', 'Тэр утсаа холдуул...', 'Чимээгүй бай!', 'Энэ миний газар.', 'Намайг бүү шагай.', 'Яв... одоохон.'],
+  angry: ['ЯВ ЭНДЭЭС!', 'НАМАЙГ ОРХИ!', 'ЧИ ЭНД БАЙХ ЁСГҮЙ!', 'БҮҮ ОЙРТ!', 'ГАР!!!'],
+};
+const MOOD_LABEL = { calm: 'Тайван', sad: 'Гунигтай', irritated: 'Бухимдсан', angry: 'УУРЛАСАН' };
+const MALE = ['Батболд', 'Дорж', 'Ганбаатар', 'Пүрэв', 'Төмөр', 'Очир', 'Самбуу', 'Дамдин', 'Лхагва', 'Жамсран'];
+const FEMALE = ['Должин', 'Цэцэг', 'Сарантуяа', 'Ханд', 'Оюун', 'Балжид', 'Дулам', 'Норжмаа', 'Пагма', 'Сэлэнгэ'];
+const ERAS = ['1920-иод он', '1930-аад он', '1940-өөд он', '1950-иад он', '1960-аад он', '1970-аад он', '1980-аад он', '1990-ээд он'];
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function randomProfile() {
+  const male = Math.random() < .5, r = Math.random();
+  return { name: pick(male ? MALE : FEMALE), age: 18 + Math.floor(Math.random() * 75), gender: male ? 'Эрэгтэй' : 'Эмэгтэй', era: pick(ERAS), base: r < .4 ? 'calm' : r < .75 ? 'sad' : 'irritated' };
+}
+const E = {
+  phase: 'calibrating', profile: randomProfile(), bearing: 0, distance: 15, elevation: -2,
+  viewHeading: 0, viewPitch: 0, delta: 0, emf: 0, anger: 0, reveal: 0,
+  magBaseline: 0, magDeviation: 0, anomaly: false, speech: '', speechSerial: 0, rageSerial: 0, log: [],
+  time: 0, calibTime: 0, calibSamples: [], speechTimer: 0, lostTimer: 0, vanishTimer: 0, spawned: false, used: [],
+  motionLevel: 0, motionCooldown: 0,
+  get mood() { if (this.anger >= .6) return 'angry'; if (this.anger >= .3) return 'irritated'; return this.profile.base === 'irritated' ? 'sad' : this.profile.base; },
+  get inView() { return Math.abs(this.delta) < HFOV / 2 + 4; },
+  get ready() { return this.reveal >= 1; },
+  get rageVisual() { return clamp((this.anger - .3) / .7, 0, 1); },
+  addLog(s) { this.log.unshift(s); if (this.log.length > 4) this.log.pop(); },
+  recalibrate() { this.phase = 'calibrating'; this.calibSamples = []; this.calibTime = 0; this.anomaly = false; },
+  spawn(fresh = true) {
+    if (fresh) { this.profile = randomProfile(); this.anger = this.profile.base === 'irritated' ? .22 : this.profile.base === 'sad' ? .08 : 0; }
+    this.bearing = (this.viewHeading + 70 + Math.random() * 220) % 360;
+    this.distance = 12 + Math.random() * 8; this.reveal = 0; this.speech = ''; this.used = []; this.phase = 'searching';
+    this.addLog(`Шинэ энергийн эх үүсвэр (хиймэл ~${this.distance.toFixed(0)} м)`);
+  },
+  onStep() { if ((this.phase === 'searching' || this.phase === 'encounter') && Math.abs(this.delta) < 35) this.distance = Math.max(1.3, this.distance - .8); },
+  onShake() { if (this.phase === 'searching' || this.phase === 'encounter') { this.anger = Math.min(1, this.anger + .3); this.addLog('Сэгсрэлт сүнсийг бухимдуулав'); } },
+  onMotion(level, xNorm) {
+    this.motionLevel = level;
+    if (level < .015 || this.phase === 'calibrating' || this.phase === 'vanished') return;
+    this.emf = Math.min(1, this.emf + level * .6);
+    if (this.motionCooldown <= 0) {
+      this.motionCooldown = 2.5;
+      this.addLog(`Хөдөлгөөн илэрлээ (${(level * 100).toFixed(0)}%)`);
+      const b = (this.viewHeading + (xNorm - .5) * HFOV + 360) % 360;
+      this.bearing = (this.bearing + angleDiff(b, this.bearing) * .5 + 360) % 360;
+      this.distance = Math.max(1.3, this.distance - 1);
+    }
+  },
+  update(dt, front) {
+    this.time += dt; if (this.motionCooldown > 0) this.motionCooldown -= dt;
+    this.viewHeading = viewHeading(front); this.viewPitch = viewPitch(front);
+    this.delta = angleDiff(this.bearing, this.viewHeading);
+    if (this.phase === 'calibrating') {
+      if (S.hasOri) this.calibTime += dt;
+      if (this.calibTime >= 2) {
+        if (this.spawned) this.phase = 'searching'; else { this.spawned = true; this.spawn(); }
+      }
+      this.emf = .05 + Math.random() * .05;
+    } else if (this.phase === 'vanished') {
+      this.emf = Math.max(0, this.emf - dt * .8); this.vanishTimer -= dt; if (this.vanishTimer <= 0) this.spawn();
+    } else this.active(dt);
+  },
+  active(dt) {
+    // Бодит хэмжилт л ашиглана: суурь хэмжээгүй / мэдрэгчгүй бол 0
+    this.magDeviation = MAG.delta == null ? 0 : Math.abs(MAG.delta);
+    const was = this.anomaly; this.anomaly = MAG.anomaly;
+    if (this.anomaly && !was) this.addLog(`Соронзон аномали: Δ${this.magDeviation.toFixed(0)} µT`);
+    if (this.anomaly) {
+      this.bearing = (this.bearing + angleDiff(this.viewHeading, this.bearing) * dt * .8 + 360) % 360;
+      this.distance = Math.max(1.3, this.distance - dt * 1.2); this.anger = Math.min(1, this.anger + dt * .06);
+    }
+    const align = Math.exp(-Math.pow(this.delta / 35, 2));
+    const prox = clamp((20 - this.distance) / 18.7, 0, 1);
+    if (align > .55) this.distance = Math.max(1.3, this.distance - dt * .35);
+    else this.bearing = (this.bearing + Math.sin(this.time * .37) * dt * 6 + 360) % 360;
+    this.distance = Math.max(1.3, this.distance - dt * .05);
+    const target = clamp(.06 + .5 * align * (.35 + .65 * prox) + .35 * prox * prox + this.magDeviation / 90 + (Math.random() - .5) * .06, 0, 1);
+    this.emf += (target - this.emf) * Math.min(1, dt * 6);
+    if (this.distance < 2.2) this.anger += dt * .025;
+    if (this.phase === 'encounter' && align > .8) this.anger += dt * .01;
+    if (this.distance > 4 && !this.anomaly) this.anger -= dt * .015;
+    this.anger = clamp(this.anger, 0, 1);
+    if (this.phase === 'searching') {
+      if (this.distance < 3.6 && this.inView) { this.phase = 'encounter'; this.speechTimer = 1; this.lostTimer = 0; this.addLog('AR ДҮР ГАРЧ ИРЛЭЭ — симуляци'); }
+    } else {
+      this.reveal = Math.min(1, this.reveal + dt / 2.8);
+      if (!this.inView) { this.lostTimer += dt; if (this.lostTimer > 5) { this.phase = 'searching'; this.distance = 6 + Math.random() * 3; this.addLog('Сүнс холдлоо...'); } }
+      else this.lostTimer = 0;
+      if (this.ready) { this.speechTimer -= dt; if (this.speechTimer <= 0) { this.say(); this.speechTimer = this.mood === 'angry' ? 3 : 4.6; } }
+      if (this.anger >= .97) { this.rageSerial++; this.phase = 'vanished'; this.vanishTimer = 4; this.speech = ''; this.addLog('Сүнс дайраад алга болов!'); }
+    }
+  },
+  say() {
+    const list = PHRASES[this.mood], fresh = list.filter(p => !this.used.includes(p)), pool = fresh.length ? fresh : list;
+    const p = pick(pool); this.used.push(p); if (this.used.length > 6) this.used.shift();
+    this.speech = p; this.speechSerial++;
+  },
+};
+stepCbs.push(() => E.onStep());
+shakeCbs.push(() => { E.onShake(); vibrate(60); });
+const vibrate = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} };
+
+// ---------------------------------------------------------------- audio
+const A = { ctx: null, buf: {}, hum: null, humGain: null, on: false, master: null };
+function initAudio() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; A.ctx = new AC();
+    A.master = A.ctx.createGain(); A.master.connect(A.ctx.destination);
+    A.ctx.resume();
+    synthSounds(); startHum();
+  } catch (_) {}
+}
+// Дуунуудыг файлгүйгээр, кодоор үүсгэнэ (Flutter аппын wav-тай ижил томъёо)
+function synthSounds() {
+  const SR = A.ctx.sampleRate, mk = (sec, f) => { const n = Math.floor(SR * sec), b = A.ctx.createBuffer(1, n, SR), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = f(i / SR, i); return b; };
+  const rnd = () => Math.random() * 2 - 1, TAU = Math.PI * 2;
+  let lp1 = 0, lp2 = 0, lp3 = 0, lp4 = 0;
+  // hum: 4 сек давталттай
+  A.buf.hum = mk(4, t => { lp1 += .02 * (rnd() - lp1); const sw = .75 + .25 * Math.sin(TAU * .5 * t);
+    return .7 * ((.35 * Math.sin(TAU * 55 * t) + .22 * Math.sin(TAU * 82.5 * t + 1) + .12 * Math.sin(TAU * 110.25 * t)) * sw + .5 * lp1 * (.5 + .5 * Math.sin(TAU * .25 * t))); });
+  A.buf.tick = mk(.03, t => .8 * (Math.sin(TAU * 2400 * t) * Math.exp(-t * 140) + .4 * rnd() * Math.exp(-t * 400)));
+  const ph = Math.random() * 3;
+  A.buf.whisper = mk(1.8, t => { const n = rnd(); lp1 += .35 * (n - lp1); lp2 += .04 * (n - lp2);
+    const env = Math.max(0, Math.sin(Math.PI * t / 1.8)) * (.55 + .45 * Math.abs(Math.sin(TAU * 3.3 * t + ph))); return 2.2 * (lp1 - lp2) * env; });
+  let phs = 0;
+  A.buf.growl = mk(1.4, t => { const f0 = 70 + 15 * Math.sin(TAU * 5 * t); phs += f0 / SR; const saw = 2 * (phs % 1) - 1; lp3 += .08 * (rnd() - lp3);
+    const env = clamp(Math.min(t / .1, (1.4 - t) / .4), 0, 1); const g = Math.tanh(3 * (.7 * saw + 3 * lp3)) * env; lp4 += .25 * (g - lp4); return .9 * lp4; });
+  let ps = 0;
+  A.buf.sting = mk(1.3, t => { const f = 300 + 2600 * Math.pow(t / 1.3, 2); ps += TAU * f / SR;
+    const v = .5 * Math.sin(ps) + .3 * Math.sin(ps * 1.5 + .3) + .35 * rnd() * Math.exp(-t * 2); return .9 * Math.tanh(2 * v * clamp(Math.min(t / .05, (1.3 - t) / .3), 0, 1)); });
+  A.buf.flag = mk(.32, t => { const tt = t % .16, f = t < .14 ? 1320 : t > .17 ? 1760 : 0; return f ? .7 * Math.sin(TAU * f * t) * Math.min(tt / .01, 1) * Math.exp(-tt * 8) : 0; });
+}
+function startHum() {
+  const s = A.ctx.createBufferSource(); s.buffer = A.buf.hum; s.loop = true;
+  A.humGain = A.ctx.createGain(); A.humGain.gain.value = 0;
+  s.connect(A.humGain).connect(A.master); s.start(); A.hum = s;
+}
+function play(name, vol = 1) {
+  if (!A.on || !A.ctx || !A.buf[name]) return;
+  const s = A.ctx.createBufferSource(), g = A.ctx.createGain(); s.buffer = A.buf[name]; g.gain.value = vol;
+  s.connect(g).connect(A.master); s.start();
+}
+function setHum(level) { if (A.humGain) A.humGain.gain.setTargetAtTime(A.on ? .05 + level * .55 : 0, A.ctx.currentTime, .1); }
+
+// ---------------------------------------------------------------- microphone (dBFS)
+const MIC = { stream: null, analyser: null, buf: null, dbfs: null, busy: false, lastLoud: 0 };
+function dbfs(samples) { if (!samples.length) return -96; let s = 0; for (const v of samples) s += v * v; return clamp(20 * Math.log10(Math.max(Math.sqrt(s / samples.length), 1e-8)), -96, 0); }
+async function toggleMic() {
+  if (MIC.stream) return stopMic();
+  if (MIC.busy) return; MIC.busy = true;
+  try {
+    if (!A.ctx) initAudio();
+    await A.ctx.resume();
+    const st = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
+    MIC.stream = st;
+    const src = A.ctx.createMediaStreamSource(st);
+    MIC.analyser = A.ctx.createAnalyser(); MIC.analyser.fftSize = 2048; MIC.buf = new Float32Array(2048);
+    src.connect(MIC.analyser);
+    $('micTog').classList.add('on'); toast('Микрофон асав — dBFS (харьцангуй түвшин, dB SPL биш)');
+  } catch (e) { stopMic(); toast(camErr(e), 4000); }
+  finally { MIC.busy = false; }
+}
+function stopMic() {
+  if (SES.recorder && SES.recorder.state === 'recording') SES.recorder.stop();
+  if (MIC.stream) MIC.stream.getTracks().forEach(t => t.stop());
+  MIC.stream = null; MIC.analyser = null; MIC.dbfs = null; $('micTog').classList.remove('on');
+}
+function readMic() {
+  if (DEMO.on) { const t = DEMO.t; return -56 + 15 * Math.sin(t * .6) + (Math.sin(t * .31) > .93 ? 30 : 0); }
+  if (!MIC.analyser) return null;
+  MIC.analyser.getFloatTimeDomainData(MIC.buf); return dbfs(MIC.buf);
+}
+
+// ---------------------------------------------------------------- logger
+const cell = v => { const s = v == null ? '' : String(v); return '"' + s.replaceAll('"', '""') + '"'; };
+const L = {
+  samples: [], flags: [], sens: .5, rows: [], start: performance.now(), lastAuto: -10, serial: 0,
+  now() { return (performance.now() - this.start) / 1000; },
+  header: ['utc', 'elapsed_s', 'mode', 'mag_source', 'bx_uT', 'by_uT', 'bz_uT', 'b_total_uT', 'baseline_uT', 'delta_uT', 'baseline_sigma_uT', 'threshold_uT', 'audio_dbfs', 'vibration_ms2', 'motion_pct', 'tilt_deg', 'heading_deg', 'simulated_ar_intensity', 'simulated_distance_m', 'fictional_mood', 'event'],
+  wasMag: false,
+  add(s) {
+    const t = this.now(); s.t = t; let auto = null;
+    if (!DEMO.on && MAG.live && MAG.anomaly && !this.wasMag && MAG.delta != null) auto = `Соронзон орон Δ${MAG.delta >= 0 ? '+' : ''}${MAG.delta.toFixed(1)} µT (босго ${MAG.threshold.toFixed(1)})`;
+    this.wasMag = !DEMO.on && MAG.live && MAG.anomaly;
+    if (!auto && this.samples.length >= 20 && t - this.lastAuto > 2) {
+      const rec = this.samples.slice(-20), avg = rec.reduce((a, b) => a + b.dev, 0) / rec.length, k = this.sens;
+      if (false) {}
+      else if (s.vib > 6 - 4.8 * k) auto = `Чичиргээ ${s.vib.toFixed(1)} м/с²`;
+      else if (s.tilt > 8 - 7 * k) auto = `Хазайлт ${s.tilt.toFixed(1)}°`;
+      else if (s.audio != null && s.audio > -15 - 20 * k) auto = `Дууны түвшин ${s.audio.toFixed(0)} dBFS`;
+      else if (s.motion > .15 - .13 * k) auto = `Хөдөлгөөн ${(s.motion * 100).toFixed(0)}%`;
+    }
+    this.samples.push(s); if (this.samples.length > 600) this.samples.shift();
+    this.flags = this.flags.filter(f => t - f.t <= 60);
+    if (auto) { this.lastAuto = t; this.flags.push({ t, label: auto, auto: true }); this.serial++; }
+    const B = MAG.baseline, live = MAG.live && !DEMO.on, f2 = v => v == null ? null : v.toFixed(2);
+    const gm = ui.measure;
+    this.rows.push([new Date().toISOString(), t.toFixed(2), runMode(), live ? 'web_magnetometer' : 'unavailable',
+      live ? f2(MAG.x) : null, live ? f2(MAG.y) : null, live ? f2(MAG.z) : null, live ? f2(MAG.total) : null,
+      live && B ? f2(B.total) : null, live ? f2(MAG.delta) : null, live && B ? f2(B.sigma) : null, live && B ? f2(MAG.threshold) : null,
+      s.audio == null ? null : s.audio.toFixed(1), S.hasAcc ? s.vib.toFixed(2) : null, motionOn ? (s.motion * 100).toFixed(1) : null, S.hasAcc ? s.tilt.toFixed(2) : null, S.hasOri ? s.heading.toFixed(0) : null, gm ? null : s.emf.toFixed(3), gm ? null : s.dist.toFixed(1), gm ? null : s.mood, auto ? 'AUTO: ' + auto : null]);
+    if (auto) SES.addEvent(auto, true);
+    return auto;
+  },
+  manual(note) {
+    const t = this.now(), label = note || 'Гар тэмдэг';
+    this.flags.push({ t, label, auto: false }); this.serial++;
+    this.rows.push(this.blank('MANUAL: ' + label));
+    SES.addEvent(label, false);
+  },
+  blank(ev) { return [new Date().toISOString(), this.now().toFixed(2), runMode(), ...Array(this.header.length - 4).fill(null), ev]; },
+  note(text) { this.rows.push(this.blank(text)); },
+  csvOf(rows) { return '\ufeff' + [this.header, ...rows].map(r => r.map(cell).join(',')).join('\r\n') + '\r\n'; },
+  csv() { return this.csvOf(this.rows); },
+  reset() { this.rows = []; this.start = performance.now(); this.samples = []; this.flags = []; this.lastAuto = -10; this.wasMag = false; },
+};
+
+// ---------------------------------------------------------------- sessions (IndexedDB, зөвхөн энэ төхөөрөмжид)
+const SES = {
+  name: 'Туршилт', utc: new Date().toISOString(), events: [], recorder: null, chunks: [], recordAudio: false, saving: false,
+  addEvent(label, auto) { this.events.unshift({ utc: new Date().toISOString(), t: L.now(), label, auto, mode: runMode() }); if (this.events.length > 200) this.events.pop(); },
+  db: null,
+  open() {
+    if (this.db) return this.db;
+    return this.db = new Promise((res, rej) => {
+      if (!window.indexedDB) return rej(Error('Хадгалалт дэмжигдээгүй'));
+      const r = indexedDB.open('ghost-detector-v1', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('sessions', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+  },
+  async tx(mode, fn) {
+    const db = await this.open();
+    return new Promise((res, rej) => { const t = db.transaction('sessions', mode), q = fn(t.objectStore('sessions')); let out; q.onsuccess = () => out = q.result; t.oncomplete = () => res(out); t.onerror = t.onabort = () => rej(t.error); });
+  },
+  startAudio() {
+    this.chunks = [];
+    if (!this.recordAudio || !MIC.stream || !window.MediaRecorder) return;
+    try { const r = new MediaRecorder(MIC.stream); r.ondataavailable = e => e.data.size && this.chunks.push(e.data); r.start(1000); this.recorder = r; } catch (_) { this.recorder = null; }
+  },
+  stopAudio() {
+    return new Promise(res => {
+      const r = this.recorder; this.recorder = null;
+      if (!r || r.state !== 'recording') return res(this.chunks.length ? new Blob(this.chunks) : null);
+      r.onstop = () => res(new Blob(this.chunks, { type: r.mimeType })); r.stop();
+    });
+  },
+  // одоогийн session-ийг хадгалаад шинийг эхлүүлнэ
+  async save(silent = false) {
+    if (this.saving) return;
+    if (L.rows.length < 2) { L.reset(); this.events = []; this.startAudio(); return; }
+    this.saving = true;
+    const snapshot = { rows: L.rows.slice(), events: this.events.slice(), mode: runMode(), duration: L.now() };
+    const audioBlob = await this.stopAudio();
+    const rec = { id: Date.now(), name: this.name, utc: this.utc, ...snapshot, audioBlob };
+    try { await this.tx('readwrite', s => s.put(rec)); if (!silent) toast('Бүртгэл энэ төхөөрөмжид хадгалагдлаа'); }
+    catch (e) { if (!silent) { toast('Хадгалж чадсангүй — CSV-г татаж авна уу', 4000); showEvidence(new Blob([L.csv()], { type: 'text/csv' }), 'ghost-recovery.csv', 'csv'); } }
+    L.reset(); this.events = []; this.utc = new Date().toISOString(); this.saving = false;
+    this.startAudio();
+  },
+};
+
+// ---------------------------------------------------------------- camera
+const C = { token: 0, stream: null, facing: 'environment', deviceIds: [], devIdx: -1, res: 1280, track: null, caps: {}, torch: false, exposure: 0, busy: false, front: false };
+const video = $('video');
+function cameraMessage(title, message) {
+  $('cameraHelpTitle').textContent=title; $('cameraHelpText').textContent=message;
+  $('cameraHelp').classList.remove('hidden'); $('cameraRetry').disabled=C.busy;
+}
+async function startCamera() {
+  if (C.busy) return; C.busy=true; cameraMessage('Камер холбогдож байна…','Зөвшөөрлийн цонх гарвал Allow / Зөвшөөрөх сонгоно уу.');
+  try {
+    stopCamera(); const token=C.token;
+    if (!window.isSecureContext) throw Error('Камер HTTPS хаяг шаарддаг. Татсан HTML эсвэл http хаягийн оронд live холбоосыг Safari-д нээнэ үү.');
+    if (!navigator.mediaDevices?.getUserMedia) throw Error('Энэ цонх камерын эрхгүй. iPhone дээр холбоосыг Safari-ийн тусдаа цонхонд; Windows дээр Chrome/Edge-д нээнэ үү.');
+    const v={width:{ideal:C.res},height:{ideal:Math.round(C.res*9/16)}};
+    if(C.devIdx>=0&&C.deviceIds[C.devIdx])v.deviceId={exact:C.deviceIds[C.devIdx].id};else v.facingMode={ideal:C.facing};
+    let stream;
+    try { stream=await navigator.mediaDevices.getUserMedia({video:v,audio:false}); }
+    catch(e) { if(!['OverconstrainedError','NotFoundError'].includes(e.name))throw e;stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); }
+    if(token!==C.token||document.hidden){stream.getTracks().forEach(t=>t.stop());return}
+    C.stream=stream;C.track=stream.getVideoTracks()[0];
+    if(!C.track)throw Error('Камерын дүрсний урсгал ирсэнгүй.');
+    C.track.addEventListener('ended',()=>{if(C.stream===stream){stopCamera();cameraMessage('Камер саллаа','Камер дахин асаах товчийг дарна уу.')}});
+    video.srcObject=stream;video.muted=true;video.playsInline=true;await video.play();
+    const st=C.track.getSettings?C.track.getSettings():{},label=(C.track.label||'').toLowerCase();
+    C.front=st.facingMode?st.facingMode==='user':label.includes('front')||C.facing==='user';video.classList.toggle('mirror',C.front);
+    C.caps=C.track.getCapabilities?C.track.getCapabilities():{};
+    if(C.torch&&C.caps.torch)applyTorch(true);else C.torch=false;
+    if(C.exposure&&C.caps.exposureCompensation)applyExposure(C.exposure);
+    prevLuma=null;if(!C.deviceIds.length)listCameras();$('cameraHelp').classList.add('hidden');
+  } catch(e) { stopCamera();cameraMessage('Камер асаагүй',camErr(e)+' Safari/Chrome-ийн сайтын Camera зөвшөөрөл болон Windows Settings → Privacy & security → Camera тохиргоог шалгана уу.'); }
+  finally {C.busy=false;$('cameraRetry').disabled=false;}
+}
+function stopCamera() { C.token++; if (C.stream) C.stream.getTracks().forEach(t => t.stop()); C.stream = null; C.track = null; video.srcObject = null; }
+async function listCameras() {
+  try {
+    const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    C.deviceIds = ds.map(d => ({ id: d.deviceId, label: d.label || 'Камер' }));
+  } catch (_) {}
+}
+async function flipCamera() {
+  if (REC.on) return toast('Бичлэг хийж байхад камер солих боломжгүй');
+  C.facing = C.front ? 'environment' : 'user'; C.devIdx = -1; C.torch = false; await startCamera();
+}
+async function applyTorch(on) {
+  try { await C.track.applyConstraints({ advanced: [{ torch: on }] }); C.torch = on; } catch (_) { C.torch = false; }
+}
+async function applyExposure(v) {
+  try { await C.track.applyConstraints({ advanced: [{ exposureMode: 'continuous', exposureCompensation: v }] }); C.exposure = v; } catch (_) {}
+}
+
+// хөдөлгөөн мэдрэгч
+const MC = 24, MR = 32, mCan = document.createElement('canvas'); mCan.width = MC; mCan.height = MR;
+const mCtx = mCan.getContext('2d', { willReadFrequently: true });
+let prevLuma = null, motionCells = [], motionLevel = 0, motionX = .5, motionOn = false, lastMotion = 0;
+function computeMotion() {
+  if (!video.videoWidth) return;
+  mCtx.drawImage(video, 0, 0, MC, MR);
+  const d = mCtx.getImageData(0, 0, MC, MR).data, n = MC * MR, cur = new Float32Array(n);
+  for (let i = 0; i < n; i++) cur[i] = .299 * d[i * 4] + .587 * d[i * 4 + 1] + .114 * d[i * 4 + 2];
+  const prev = prevLuma; prevLuma = cur; if (!prev) return;
+  let mean = 0; const diff = new Float32Array(n);
+  for (let i = 0; i < n; i++) { diff[i] = Math.abs(cur[i] - prev[i]); mean += diff[i]; } mean /= n;
+  const cells = []; let sx = 0;
+  if (mean < 22) { const th = 16 + mean * 1.5; for (let i = 0; i < n; i++) if (diff[i] > th) { cells.push(i); sx += (i % MC + .5) / MC; } }
+  motionCells = cells; motionLevel = cells.length / n; if (cells.length) motionX = sx / cells.length;
+}
+
+// видео → дэлгэцийн координат (object-fit: cover)
+function coverMap(W, H) {
+  const vw = video.videoWidth || W, vh = video.videoHeight || H, s = Math.max(W / vw, H / vh);
+  return { s, ox: (W - vw * s) / 2, oy: (H - vh * s) / 2, vw, vh };
+}
+
+// ---------------------------------------------------------------- UI state
+const ui = { measure: false, mode: 'normal', laser: false, graph: true, stamp: true, torchAlert: false, flash: 0, shutter: 0, alert: 0, seenSpeech: 0, seenRage: 0, seenFlag: 0 };
+const pose = { x: NaN, y: 0, h: 0, op: 0 };
+const scene = $('scene'), sctx = scene.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; scene.width = W * DPR; scene.height = H * DPR; }
+addEventListener('resize', resize);
+
+function toast(msg, ms = 2200) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(t._h); t._h = setTimeout(() => t.style.opacity = 0, ms); }
+
+// ---------------------------------------------------------------- drawing
+function drawScene(t) {
+  sctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  sctx.clearRect(0, 0, W, H);
+  const m = coverMap(W, H), mirror = C.front;
+  const cellToScreen = i => {
+    let cx = i % MC; const cy = Math.floor(i / MC);
+    const vx = cx / MC * m.vw, vy = cy / MR * m.vh;
+    let x = m.ox + vx * m.s; const y = m.oy + vy * m.s, w = m.vw / MC * m.s, h = m.vh / MR * m.s;
+    if (mirror) x = W - x - w;
+    return { x, y, w, h };
+  };
+  // шөнийн шуугиан
+  if (ui.mode === 'night') { sctx.fillStyle = 'rgba(182,255,182,.33)'; for (let i = 0; i < 140; i++) sctx.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5); }
+  // хөдөлгөөний нүднүүд
+  const moving = new Set(motionCells);
+  if (moving.size) { sctx.fillStyle = 'rgba(255,59,59,.22)'; for (const i of moving) { const r = cellToScreen(i); sctx.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2); } }
+  // лазер тор
+  if (ui.laser) {
+    const gx = 14, gy = 24;
+    for (let r = 0; r < gy; r++) for (let c = 0; c < gx; c++) {
+      let x = (c + .5) * W / gx, y = (r + .5) * H / gy;
+      let sxp = mirror ? W - x : x;
+      const vx = (sxp - m.ox) / m.s, vy = (y - m.oy) / m.s;
+      const cx = clamp(Math.floor(vx / m.vw * MC), 0, MC - 1), cy = clamp(Math.floor(vy / m.vh * MR), 0, MR - 1);
+      const hit = moving.has(cy * MC + cx);
+      if (hit) { x += (Math.random() - .5) * 10; y += (Math.random() - .5) * 10; }
+      sctx.fillStyle = hit ? 'rgba(255,59,59,.45)' : 'rgba(57,255,106,.28)';
+      sctx.beginPath(); sctx.arc(x, y, 6, 0, 7); sctx.fill();
+      sctx.fillStyle = hit ? '#ff3b3b' : '#6bff6b';
+      sctx.beginPath(); sctx.arc(x, y, 2.2, 0, 7); sctx.fill();
+    }
+  }
+  // сүнс (хэмжилтийн горимд зурахгүй)
+  if (ui.measure) return;
+  let target = 0;
+  if (E.phase === 'encounter') target = E.inView ? .45 + .55 * E.reveal : 0;
+  else if (E.phase === 'searching' && E.distance < 7 && E.inView) target = (7 - E.distance) / 7 * .35;
+  const gx = W / 2 + (mirror ? -1 : 1) * E.delta / HFOV * W;
+  const gy = H / 2 - (E.elevation - E.viewPitch) / VFOV * H;
+  const gh = H * clamp(1.7 / E.distance, .22, 1.05);
+  if (isNaN(pose.x)) { pose.x = gx; pose.y = gy; pose.h = gh; }
+  pose.x += (gx - pose.x) * .15; pose.y += (gy - pose.y) * .15; pose.h += (gh - pose.h) * .1; pose.op += (target - pose.op) * .08;
+  if (pose.op > .02) {
+    const flick = .85 + .15 * Math.sin(t * 17) * Math.sin(t * 5.3);
+    drawGhost(sctx, pose.x + Math.sin(t * .9) * pose.h * .013, pose.y, pose.h, t, clamp(pose.op * flick, 0, 1), E.rageVisual, .35 + .4 * E.rageVisual);
+  }
+}
+
+function drawRadar(t) {
+  const c = $('radar'), d = DPR, s = 104;
+  if (c.width !== s * d) { c.width = s * d; c.height = s * d; }
+  const x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, s, s);
+  const cx = s / 2, cy = s / 2, r = s / 2 - 2, angry = E.phase === 'encounter' && E.mood === 'angry';
+  const col = angry ? '255,59,59' : '57,255,200';
+  x.fillStyle = 'rgba(0,0,0,.5)'; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill();
+  x.strokeStyle = `rgba(${col},.35)`; x.lineWidth = 1;
+  for (const k of [.33, .66, 1]) { x.beginPath(); x.arc(cx, cy, r * k, 0, 7); x.stroke(); }
+  x.beginPath(); x.moveTo(cx - r, cy); x.lineTo(cx + r, cy); x.moveTo(cx, cy - r); x.lineTo(cx, cy + r); x.stroke();
+  const fov = HFOV * Math.PI / 180; x.fillStyle = `rgba(${col},.1)`; x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, r, -Math.PI / 2 - fov / 2, -Math.PI / 2 + fov / 2); x.fill();
+  const a = (t / 2 % 1) * Math.PI * 2 - Math.PI / 2;
+  x.fillStyle = `rgba(${col},.25)`; x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, r, a - .6, a); x.fill();
+  if (E.phase === 'searching' || E.phase === 'encounter') {
+    const fuzz = (1 - E.emf) * 18, ang = (E.delta + Math.sin(t * 6) * fuzz) * Math.PI / 180 - Math.PI / 2;
+    const dist = clamp(E.distance / 20, .08, 1) * r, px = cx + Math.cos(ang) * dist, py = cy + Math.sin(ang) * dist;
+    const pulse = .6 + .4 * Math.sin(t * 6), bc = angry ? '#ff3b3b' : '#ffc23b';
+    x.globalAlpha = .25; x.fillStyle = bc; x.beginPath(); x.arc(px, py, 9 * pulse + 3, 0, 7); x.fill();
+    x.globalAlpha = 1; x.beginPath(); x.arc(px, py, 4, 0, 7); x.fill();
+  }
+  x.fillStyle = `rgb(${col})`; x.beginPath(); x.arc(cx, cy, 3, 0, 7); x.fill();
+}
+
+function drawGraph() {
+  const c = $('graph'), d = DPR, w = c.clientWidth, h = 84; if (!w) return;
+  if (c.width !== Math.round(w * d)) { c.width = Math.round(w * d); c.height = h * d; }
+  const x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h);
+  x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(0, 0, w, h);
+  x.strokeStyle = 'rgba(255,255,255,.08)'; x.lineWidth = 1; x.beginPath();
+  for (let i = 1; i < 4; i++) { x.moveTo(0, h * i / 4); x.lineTo(w, h * i / 4); }
+  for (let s = 10; s < 60; s += 10) { x.moveTo(w * s / 60, 0); x.lineTo(w * s / 60, h); }
+  x.stroke();
+  const sm = L.samples; if (sm.length < 2) return;
+  const tNow = sm[sm.length - 1].t, xOf = t => w * (1 - (tNow - t) / 60);
+  for (const f of L.flags) {
+    const fx = xOf(f.t); if (fx < 0) continue;
+    x.strokeStyle = x.fillStyle = f.auto ? 'rgba(255,59,59,.85)' : 'rgba(255,255,255,.85)'; x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(fx, 0); x.lineTo(fx, h); x.stroke();
+    x.beginPath(); x.moveTo(fx, 2); x.lineTo(fx + 8, 6); x.lineTo(fx, 10); x.fill();
+  }
+  const ser = (key, floor, col) => {
+    const mx = Math.max(floor, ...sm.map(s => s[key] == null ? 0 : s[key])); x.strokeStyle = col; x.lineWidth = 1.6; x.beginPath(); let first = true;
+    for (const s of sm) { const px = xOf(s.t); if (px < 0 || s[key] == null) { first = true; continue; } const py = h - clamp(s[key] / mx, 0, 1) * (h - 4) - 2; first ? x.moveTo(px, py) : x.lineTo(px, py); first = false; }
+    x.stroke();
+  };
+  ser('tilt', 5, '#b9b9ff'); ser('motion', .2, '#ff5ca8'); ser('vib', 5, '#ffc23b'); ser('dev', 10, '#39ffc8');
+  if (MAG.baseline) { const mx = Math.max(10, ...sm.map(s => s.dev == null ? 0 : s.dev)), ty = h - clamp(MAG.threshold / mx, 0, 1) * (h - 4) - 2;
+    x.setLineDash([4, 4]); x.strokeStyle = 'rgba(57,255,200,.5)'; x.lineWidth = 1; x.beginPath(); x.moveTo(0, ty); x.lineTo(w, ty); x.stroke(); x.setLineDash([]); }
+  x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = 1.4; x.beginPath(); let con = false;
+  for (const s of sm) { const px = xOf(s.t); if (px < 0 || s.audio == null) { con = false; continue; } const py = h - clamp((s.audio + 96) / 96, 0, 1) * (h - 4) - 2; con ? x.lineTo(px, py) : x.moveTo(px, py); con = true; }
+  x.stroke();
+}
+
+// ---------------------------------------------------------------- DOM updates (~10 Гц)
+let lastUi = 0;
+function updateDom(t) {
+  const angry = !ui.measure && E.phase === 'encounter' && E.mood === 'angry';
+  const [st, col] = E.phase === 'calibrating' ? ['ТОХИРУУЛЖ БАЙНА', 'var(--a)'] : E.phase === 'searching' ? ['ХАЙЖ БАЙНА', 'var(--c)'] :
+    E.phase === 'encounter' ? [angry ? 'АЮУЛ!' : 'ДҮР ГАРЧ ИРЛЭЭ', angry ? 'var(--r)' : 'var(--a)'] : ['АЛГА БОЛОВ', 'var(--r)'];
+  if (ui.measure) { const c2 = MAG.anomaly ? 'var(--r)' : 'var(--c)'; $('statusText').textContent = MAG.anomaly ? 'ХЭМЖИЛТ · ӨӨРЧЛӨЛТ' : 'ХЭМЖИЛТИЙН ГОРИМ'; $('status').style.color = c2; $('status').style.borderColor = c2; }
+  else { $('statusText').textContent = st; $('status').style.color = col; $('status').style.borderColor = col; }
+  if (ui.measure) {
+    const last = L.samples[L.samples.length - 1];
+    $('mHead').textContent = S.hasOri ? E.viewHeading.toFixed(0) + '°' : '—';
+    $('mPitch').textContent = S.hasOri ? E.viewPitch.toFixed(0) + '°' : '—';
+    $('mVib').textContent = S.hasAcc && last ? last.vib.toFixed(2) + ' м/с²' : '—';
+    $('mMot').textContent = motionOn ? (motionLevel * 100).toFixed(1) + '%' : 'тогтворжуул';
+    $('mAud').textContent = MIC.dbfs == null ? '— (🎤 асаах)' : MIC.dbfs.toFixed(1) + ' dBFS';
+  }
+  $('vignette').classList.toggle('angry', angry);
+
+  // профайл
+  const pf = $('profile');
+  if (E.phase === 'encounter') {
+    pf.classList.remove('hidden'); pf.classList.toggle('red', angry);
+    const p = E.profile, cl = angry ? 'var(--r)' : 'var(--c)';
+    let body;
+    if (!E.ready) {
+      const steps = ['Дүрийн эффект', 'Дүрс бүтэц', 'Ярианы эффект'];
+      body = steps.map((s, i) => `<div class="step">${E.reveal > (i + 1) / 3.5 ? '✓' : '…'}  ${s} бэлтгэж байна</div>`).join('') +
+        `<div class="bar"><i style="width:${E.reveal * 100}%;background:${cl}"></i></div>`;
+    } else {
+      const mc = angry ? 'var(--r)' : E.mood === 'irritated' ? 'var(--a)' : '#fff';
+      body = `<div class="grid2">
+        <div><div class="lab">Нэр</div><div class="val">${p.name}</div></div>
+        <div><div class="lab">Хүйс</div><div class="val">${p.gender}</div></div>
+        <div><div class="lab">Нас</div><div class="val">~${p.age}</div></div>
+        <div><div class="lab">Амьдарч байсан үе</div><div class="val">${p.era}</div></div>
+        <div><div class="lab">Сэтгэл санаа</div><div class="val" style="color:${mc};font-weight:800">${MOOD_LABEL[E.mood]}</div></div>
+        <div><div class="lab">Уурын түвшин</div><div class="bar"><i style="width:${E.anger * 100}%;background:hsl(${45 - E.anger * 45},100%,55%)"></i></div></div></div>`;
+    }
+    pf.innerHTML = `<div class="h" style="color:${cl}"><span>◎</span><span>ЗОХИОМОЛ ДҮРИЙН ПРОФАЙЛ</span><span>${E.distance.toFixed(1)} м</span></div><hr>${body}`;
+  } else pf.classList.add('hidden');
+
+  $('graphPanel').classList.toggle('hidden', !ui.graph || (!ui.measure && E.phase === 'encounter'));
+  $('rows').textContent = `${L.rows.length} мөр`;
+  const lf = L.flags[L.flags.length - 1]; $('lastflag').textContent = lf ? '⚑ ' + lf.label : ''; $('lastflag').style.color = lf && lf.auto ? 'var(--r)' : '#fff';
+
+  // HUD
+  updateMagPanel();
+  const n = clamp(Math.ceil(E.emf * 5), 1, 5); [...$('leds').children].forEach((el, i) => el.classList.toggle('on', i < n));
+  $('headLine').textContent = !S.hasOri ? 'Чиглэл: мэдрэгчийн өгөгдөл байхгүй' : `Чиглэл: ${E.viewHeading.toFixed(0)}° • ${C.front ? 'Урд камер' : 'Арын камер'}`;
+  $('log').textContent = E.log[0] ? '› ' + E.log[0] : '';
+  $('audioLine').textContent = MIC.dbfs == null ? 'Дуу: микрофон унтраалттай (🎤)' : `Дуу: ${MIC.dbfs.toFixed(1)} dBFS${DEMO.on ? ' (демо)' : ''}`;
+  $('demoPill').classList.toggle('hidden', !DEMO.on);
+  $('hud').classList.toggle('amber', E.anomaly);
+  $('motionIcon').style.opacity = motionOn ? 1 : .3;
+  $('motionIcon').style.filter = motionOn && E.motionLevel > .015 ? 'drop-shadow(0 0 6px red)' : '';
+
+  // цагийн тэмдэг
+  const sp = $('stamp');
+  if (REC.on) { const s = Math.floor((performance.now() - REC.start) / 1000); sp.textContent = `● REC ${two(s / 60 | 0)}:${two(s % 60)}   ${stampNow()}`; sp.className = 'rec'; }
+  else { sp.textContent = ui.stamp ? stampNow() : ''; sp.className = ''; }
+
+  // дэлгэцээс гадуурх сүнс
+  const hint = $('hint');
+  if ((E.phase === 'searching' || E.phase === 'encounter') && !E.inView) {
+    const sd = C.front ? -E.delta : E.delta, right = sd > 0, behind = Math.abs(E.delta) > 130;
+    let txt = `${Math.abs(E.delta).toFixed(0)}°`;
+    if (behind && !C.front) txt = 'Таны АРД!\nурд камер руу шилж';
+    if (behind && C.front) txt = 'Таны ӨМНӨ!\nарын камер руу шилж';
+    hint.innerHTML = `<span class="arr" style="opacity:${.5 + .5 * E.emf}">${right ? '❯' : '❮'}</span>${txt}`;
+    hint.style.left = right ? '' : '10px'; hint.style.right = right ? '10px' : '';
+    hint.classList.remove('hidden');
+  } else hint.classList.add('hidden');
+
+  // калибровк
+  const cal = $('calib');
+  if (E.phase === 'calibrating') {
+    cal.classList.remove('hidden');
+    const noSensor = !S.hasOri && t > 4;
+    $('calibDemo').classList.toggle('hidden', !noSensor);
+    $('calibText').innerHTML = noSensor ? 'Чиглэлийн мэдрэгч хариу өгөхгүй байна.<br>iPhone: Safari → Тохиргоо → «Motion & Orientation Access».<br>Компьютер дээр бол демо горимоор туршина уу.' : 'Мэдрэгчүүдийг тохируулж байна.<br>Утсаа хөдөлгөлгүй барина уу...';
+    $('calibBar').style.width = clamp(E.calibTime / 2, 0, 1) * 100 + '%';
+  } else cal.classList.add('hidden');
+}
+
+function updateMagPanel() {
+  const tot = $('magTotal'), dl = $('magDelta'), xyz = $('magXYZ'), base = $('magBase'), warn = $('magWarn'), btn = $('magBaseBtn');
+  if (!MAG.live || DEMO.on) {
+    tot.textContent = '—'; dl.classList.add('hidden'); xyz.textContent = '';
+    base.textContent = MAG.status === 'checking' ? 'Мэдрэгч шалгаж байна…' : 'Бодит утга байхгүй — хиймэл тоо харуулахгүй';
+    warn.textContent = MAG.status === 'unavailable' ? MAG.reason : ''; btn.classList.add('hidden'); return;
+  }
+  const f = v => v.toFixed(1), d = MAG.delta, B = MAG.baseline;
+  tot.textContent = f(MAG.total) + ' µT';
+  if (d == null) dl.classList.add('hidden'); else { dl.classList.remove('hidden'); const r = +d.toFixed(1); dl.textContent = r === 0 ? 'Δ±0.0' : 'Δ' + (r > 0 ? '+' : '') + r.toFixed(1); dl.classList.toggle('hot', MAG.anomaly); }
+  xyz.textContent = `X ${f(MAG.x)}  Y ${f(MAG.y)}  Z ${f(MAG.z)} µT`;
+  base.textContent = B ? `Суурь ${f(B.total)} ±${B.sigma.toFixed(2)} • босго ${f(MAG.threshold)} • ${MAG.hz.toFixed(0)} Гц` : `Суурь хэмжээгүй • ${MAG.hz.toFixed(0)} Гц`;
+  btn.classList.remove('hidden'); btn.textContent = MAG.measuring ? `Хэмжиж… ${Math.round(MAG.prog * 100)}%` : (B ? 'Суурь дахин' : 'Суурь хэмжих');
+  warn.textContent = MAG.warn;
+}
+
+function updateSpeech() {
+  const sp = $('speech');
+  if (E.phase === 'encounter' && E.ready && E.speech) {
+    sp.classList.remove('hidden'); sp.classList.toggle('red', E.mood === 'angry');
+    if (sp._serial !== E.speechSerial) { sp._serial = E.speechSerial; sp._start = performance.now(); }
+    const full = `«${E.speech}»`, n = Math.min(full.length, Math.floor((performance.now() - sp._start) / 40));
+    $('speechText').textContent = full.slice(0, n);
+  } else sp.classList.add('hidden');
+}
+
+// Бүртгэлд бичигдэх горим
+const runMode = () => DEMO.on ? 'all_simulated' : ui.measure ? 'measure' : 'ar_simulation_with_live_sensors';
+const captureLabel = () => DEMO.on ? 'DEMO · SIMULATED DATA' : ui.measure ? 'MEASUREMENT · SENSOR DATA' : 'AR SIMULATION · FICTIONAL OVERLAY';
+function setMeasure(on) {
+  ui.measure = on; document.body.classList.toggle('measure', on);
+  $('modeBanner').textContent = DEMO.on ? 'ДЕМО · ХИЙМЭЛ УТГА' : on ? 'ХЭМЖИЛТ · БОДИТ МЭДРЭГЧИЙН УТГА' : 'AR СИМУЛЯЦИ · ДҮР, РАДАР, ПРОФАЙЛ ХИЙМЭЛ';
+  $('footNote').textContent = DEMO.on ? 'ДЕМО — бодит хэмжилт биш' : on ? 'Хэмжилтийн горим — зөвхөн бодит мэдрэгчийн утга' : 'Зугаа цэнгэлийн зориулалттай';
+  if (on) { pose.op = 0; ui.flash = 0; E.log = []; if (A.humGain) setHum(0); }
+  else { E.recalibrate(); }
+}
+
+// ---------------------------------------------------------------- main loop
+let last = 0, nextTick = 0, logAcc = 0, prevG = null, t0 = 0;
+function loop(ts) {
+  const t = ts / 1000; if (!t0) t0 = t;
+  const dt = last ? clamp(t - last, 0, .1) : .016; last = t;
+  if (DEMO.on) demoTick(dt);
+  if (MAG.live && !MAG.baseline && !MAG.autoTried && isStill()) { MAG.autoTried = true; measureMagBaseline(); }
+  MIC.dbfs = readMic();
+  if (!ui.measure && MIC.dbfs != null && MIC.dbfs > -20 && E.phase === 'encounter' && ts - MIC.lastLoud > 1500) {
+    MIC.lastLoud = ts; E.anger = Math.min(1, E.anger + .15); E.addLog('Чанга дуу сүнсийг бухимдуулав');
+  }
+  if (ui.measure) { E.viewHeading = viewHeading(C.front); E.viewPitch = viewPitch(C.front); E.magDeviation = MAG.delta == null ? 0 : Math.abs(MAG.delta); E.anomaly = MAG.anomaly; }
+  else E.update(dt, C.front);
+
+  motionOn = !!C.stream && isStill() && !REC.processing;
+  if (motionOn) { if (ts - lastMotion >= 100) { lastMotion = ts; try { computeMotion(); } catch (_) {} } if (!ui.measure) E.onMotion(motionLevel, motionX); else E.motionLevel = motionLevel; }
+  else { prevLuma = null; motionCells = []; motionLevel = 0; E.motionLevel = 0; }
+
+  if (!ui.measure && (E.phase === 'searching' || E.phase === 'encounter') && t >= nextTick) { play('tick', .55); nextTick = t + clamp(1.1 - E.emf * 1.04, .06, 1.1); }
+  setHum(ui.measure ? 0 : E.emf);
+
+  if (!ui.measure && E.speechSerial !== ui.seenSpeech) { ui.seenSpeech = E.speechSerial; if (E.mood === 'angry') { play('growl'); vibrate(120); } else { play('whisper', .9); vibrate(25); } }
+  if (!ui.measure && E.rageSerial !== ui.seenRage) { ui.seenRage = E.rageSerial; ui.flash = 1; play('sting'); vibrate([150, 60, 150, 60, 250]); }
+
+  // лог: 10 Гц
+  logAcc += dt;
+  if (logAcc >= .1 && !SES.saving) {
+    logAcc = 0;
+    const gl = Math.hypot(S.g.x, S.g.y, S.g.z) || 1, g = { x: S.g.x / gl, y: S.g.y / gl, z: S.g.z / gl };
+    const tilt = prevG ? Math.acos(clamp(g.x * prevG.x + g.y * prevG.y + g.z * prevG.z, -1, 1)) * 180 / Math.PI : 0; prevG = g;
+    const auto = L.add({ mag: MAG.live && !DEMO.on ? MAG.total : null, dev: !MAG.live || DEMO.on || MAG.delta == null ? null : Math.abs(MAG.delta), emf: E.emf, emfv: E.emf, audio: MIC.dbfs, vib: S.hasAcc ? takeVib() : null, motion: motionOn ? motionLevel : null, tilt: S.hasAcc ? tilt : null, heading: S.hasOri ? E.viewHeading : null, dist: E.distance, mood: E.mood });
+    if (auto) E.addLog('⚑ ' + auto);
+  }
+  if (L.serial !== ui.seenFlag) {
+    ui.seenFlag = L.serial; ui.alert = 1; play('flag'); vibrate(80);
+    if (ui.torchAlert && !C.front && C.caps.torch && !C.torch) { applyTorch(true); setTimeout(() => applyTorch(false), 300); }
+  }
+
+  ui.flash = Math.max(0, ui.flash - dt * .9); ui.shutter = Math.max(0, ui.shutter - dt * 4); ui.alert = Math.max(0, ui.alert - dt * 1.2);
+  const fl = $('flash');
+  if (ui.shutter > 0) { fl.style.background = '#fff'; fl.style.opacity = ui.shutter * .8; }
+  else if (ui.flash > 0) { fl.style.background = ui.flash > .6 ? '#fff' : 'var(--r)'; fl.style.opacity = ui.flash * .85; }
+  else fl.style.opacity = 0;
+  $('alertbar').style.opacity = ui.alert;
+  const shake = ui.measure ? 0 : (E.phase === 'encounter' && E.mood === 'angry' ? 3 : 0) + ui.flash * 14;
+  video.style.translate = shake ? `${(Math.random() - .5) * shake}px ${(Math.random() - .5) * shake}px` : '';
+
+  drawScene(t);
+  if (!ui.measure) drawRadar(t);
+  updateSpeech();
+  if (ts - lastUi > 100) { lastUi = ts; updateDom(t - t0); if (ui.graph) drawGraph(); }
+  if (REC.on) REC.frame(t);
+  requestAnimationFrame(loop);
+}
+
+// ---------------------------------------------------------------- evidence: photo
+function applyMatrix(ctx, w, h, mode) {
+  if (mode === 'normal') return;
+  const M = mode === 'night'
+    ? [.10, .20, .04, 0, .55, 1.10, .22, 18, .10, .20, .04, 0]
+    : [1.25, .25, 0, 12, .10, .55, .10, 0, .35, .20, 1.15, 18];
+  const img = ctx.getImageData(0, 0, w, h), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    d[i] = M[0] * r + M[1] * g + M[2] * b + M[3];
+    d[i + 1] = M[4] * r + M[5] * g + M[6] * b + M[7];
+    d[i + 2] = M[8] * r + M[9] * g + M[10] * b + M[11];
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function stampLines() {
+  const d = MAG.delta;
+  const l = [`● ${stampNow()}`, `${MAG.live && !DEMO.on ? `|B| ${MAG.total.toFixed(1)} µT${d == null ? '' : `  Δ${d >= 0 ? '+' : ''}${d.toFixed(1)} µT`}` : 'Соронзон: мэдрэгч байхгүй'}  •  ${E.viewHeading.toFixed(0)}°`];
+  if (E.phase === 'encounter' && E.ready) l.push(`${E.profile.name}, ${E.profile.gender}, ~${E.profile.age} нас — ${MOOD_LABEL[E.mood]}`);
+  return l;
+}
+function drawStamp(ctx, w, h, lines) {
+  const fs = Math.round(w * .032);
+  ctx.save(); ctx.font = `bold ${fs}px ui-monospace,Menlo,monospace`; ctx.fillStyle = '#ffb000';
+  ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+  lines.forEach((s, i) => ctx.fillText(s, w * .03, h - h * .025 - (lines.length - 1 - i) * fs * 1.3));
+  ctx.restore();
+}
+function ghostInVideo(vw, vh) {
+  // дэлгэцийн байрлалыг видео пикселийн координат руу (+ урд камерт толин)
+  const m = coverMap(W, H);
+  let x = (pose.x - m.ox) / m.s; const y = (pose.y - m.oy) / m.s, h = pose.h / m.s;
+  return { x, y, h };
+}
+async function takePhoto() {
+  if (!C.stream || !video.videoWidth) return;
+  ui.shutter = 1; vibrate(30);
+  const vw = video.videoWidth, vh = video.videoHeight, sc = Math.min(1, 3000 / Math.max(vw, vh));
+  const w = Math.round(vw * sc), h = Math.round(vh * sc);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d');
+  ctx.save(); if (C.front) { ctx.translate(w, 0); ctx.scale(-1, 1); } ctx.drawImage(video, 0, 0, w, h); ctx.restore();
+  applyMatrix(ctx, w, h, ui.mode);
+  if (!ui.measure && pose.op > .02) { const g = ghostInVideo(vw, vh); drawGhost(ctx, g.x * sc, g.y * sc, g.h * sc, performance.now() / 1000, pose.op, E.rageVisual, .35 + .4 * E.rageVisual); }
+  drawStamp(ctx, w, h, [captureLabel(), ...(ui.stamp ? stampLines() : [])]);
+  c.toBlob(b => showEvidence(b, `ghost_${Date.now()}.jpg`, 'image'), 'image/jpeg', .92);
+}
+
+// ---------------------------------------------------------------- evidence: video (сүнстэй хамт)
+const REC = {
+  on: false, processing: false, rec: null, chunks: [], start: 0, canvas: null, ctx: null, mic: null, mime: '',
+  async toggle() {
+    if (this.on) return this.stop();
+    if (!C.stream) return;
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return toast('Энэ браузер видео бичлэг дэмжихгүй');
+    const vw = video.videoWidth, vh = video.videoHeight, sc = Math.min(1, 1280 / Math.max(vw, vh));
+    this.canvas = document.createElement('canvas'); this.canvas.width = Math.round(vw * sc); this.canvas.height = Math.round(vh * sc);
+    this.ctx = this.canvas.getContext('2d'); this.sc = sc;
+    const stream = this.canvas.captureStream(30);
+    this.ownMic = false;
+    if (MIC.stream) MIC.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    else try { this.mic = await navigator.mediaDevices.getUserMedia({ audio: true }); this.ownMic = true; this.mic.getAudioTracks().forEach(t => stream.addTrack(t)); }
+    catch (_) { toast('Микрофонгүйгээр бичнэ'); }
+    const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
+    this.mime = types.find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+    try { this.rec = new MediaRecorder(stream, this.mime ? { mimeType: this.mime, videoBitsPerSecond: 4e6 } : undefined); }
+    catch (e) { return toast('Бичлэг эхлүүлж чадсангүй'); }
+    this.chunks = []; this.rec.ondataavailable = e => e.data.size && this.chunks.push(e.data);
+    this.rec.onstop = () => {
+      const type = this.rec.mimeType || this.mime || 'video/mp4';
+      const blob = new Blob(this.chunks, { type });
+      showEvidence(blob, `ghost_${Date.now()}.${type.includes('mp4') ? 'mp4' : 'webm'}`, 'video');
+      if (this.mic && this.ownMic) this.mic.getTracks().forEach(t => t.stop()); this.mic = null;
+    };
+    this.rec.start(1000); this.on = true; this.start = performance.now(); $('recBtn').classList.add('on'); vibrate(40);
+  },
+  stop() { if (!this.on) return; this.on = false; $('recBtn').classList.remove('on'); try { this.rec.stop(); } catch (_) {} },
+  frame(t) {
+    const c = this.canvas, x = this.ctx, w = c.width, h = c.height;
+    x.save(); if (C.front) { x.translate(w, 0); x.scale(-1, 1); } x.drawImage(video, 0, 0, w, h); x.restore();
+    if (ui.mode !== 'normal') { x.save(); x.globalCompositeOperation = 'color'; x.fillStyle = ui.mode === 'night' ? 'rgba(40,255,90,.85)' : 'rgba(230,40,255,.45)'; x.fillRect(0, 0, w, h); x.restore(); }
+    if (!ui.measure && pose.op > .02) { const g = ghostInVideo(); drawGhost(x, g.x * this.sc, g.y * this.sc, g.h * this.sc, t, pose.op, E.rageVisual, .35 + .4 * E.rageVisual); }
+    drawStamp(x, w, h, [captureLabel(), ...(ui.stamp ? stampLines() : [])]);
+  },
+};
+
+// ---------------------------------------------------------------- evidence sheet
+let evFile = null;
+function showEvidence(blob, name, kind) {
+  if (!blob) return toast('Хадгалж чадсангүй');
+  evFile = new File([blob], name, { type: blob.type });
+  const url = URL.createObjectURL(blob), ev = $('evidence');
+  ev.innerHTML = `<h3>${kind === 'video' ? '🎥 Видео бэлэн' : kind === 'csv' ? '📊 Файл бэлэн' : '📷 Зураг бэлэн'}</h3>
+    ${kind === 'image' ? `<img id="evPreview" src="${url}">` : kind === 'video' ? `<video id="evPreview" src="${url}" controls playsinline></video>` : `<div class="note">${name} • Excel, Google Sheets, Numbers-д нээгдэнэ</div>`}
+    <button class="btn p" id="evShare">${isIOS ? 'Хадгалах / Хуваалцах' : 'Хуваалцах'}</button>
+    <a class="btn" id="evDl" href="${url}" download="${name}">Татаж авах</a>
+    ${kind === 'image' ? '<div class="note">iPhone: зургийг удаан дарж «Save to Photos» гэж бас хадгалж болно</div>' : ''}
+    <button class="btn" id="evClose">Хаах</button>`;
+  openSheet(ev);
+  $('evShare').onclick = async () => {
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [evFile] })) await navigator.share({ files: [evFile], title: 'Сүнс илрүүлэгч' });
+      else $('evDl').click();
+    } catch (e) { if (e.name !== 'AbortError') toast('Хуваалцаж чадсангүй — «Татаж авах»-ыг дарна уу'); }
+  };
+  $('evClose').onclick = closeSheets;
+}
+function openSheet(el) { $('backdrop').classList.remove('hidden'); el.classList.remove('hidden'); }
+function closeSheets() { $('backdrop').classList.add('hidden'); ['settings', 'evidence', 'sessions'].forEach(id => $(id).classList.add('hidden')); }
+$('backdrop').onclick = closeSheets;
+
+// ---------------------------------------------------------------- settings
+function renderSettings() {
+  const s = $('settings'), caps = C.caps || {}, ex = caps.exposureCompensation;
+  const lenses = C.deviceIds.length > 1;
+  const cur = C.devIdx >= 0 ? C.deviceIds[C.devIdx] : null;
+  s.innerHTML = `<h3>Камерын тохиргоо</h3>
+    <div class="sec">Нягтрал</div>
+    ${[[1280, '720p'], [1920, '1080p'], [3840, '4K']].map(([v, l]) => `<button class="choice ${C.res === v ? 'on' : ''}" data-res="${v}">${l}</button>`).join('')}
+    <div class="note">Өндөр нягтрал илүү их батарей зарцуулна</div>
+    ${ex ? `<div class="sec">Гэрэлтүүлэг нэмэх <b style="float:right" id="exV">+${C.exposure.toFixed(1)}</b></div>
+      <input type="range" id="exR" min="0" max="${Math.min(2, ex.max)}" step="${ex.step || .1}" value="${C.exposure}">` : `<div class="note">Гэрэлтүүлэг нэмэх: энэ браузер дэмжихгүй (iPhone Safari)</div>`}
+    <label class="srow"><span>Гар чийдэн<small>${caps.torch ? 'Харанхуйд гэрэлтүүлнэ' : 'Энэ браузер / камер дэмжихгүй'}</small></span><input type="checkbox" id="torchC" ${C.torch ? 'checked' : ''} ${caps.torch ? '' : 'disabled'}></label>
+    <label class="srow"><span>Цагийн тэмдэг<small>Огноо, цаг, EMF-ийг зураг/видеон дээр бичнэ</small></span><input type="checkbox" id="stampC" ${ui.stamp ? 'checked' : ''}></label>
+    ${lenses ? `<button class="btn" id="lensB">📷 Линз солих${cur ? ' — ' + cur.label : ''}</button>` : ''}
+    <h3 style="margin-top:18px">Өгөгдөл бүртгэл</h3>
+    <div class="sec">Spike мэдрэмж <b style="float:right" id="sensV">${Math.round(L.sens * 100)}%</b></div>
+    <input type="range" id="sensR" min="0" max="1" step=".05" value="${L.sens}">
+    <label class="srow"><span>Гар чийдэнгээр анхааруулах<small>Spike бүрт гэрэл анивчина</small></span><input type="checkbox" id="taC" ${ui.torchAlert ? 'checked' : ''} ${caps.torch ? '' : 'disabled'}></label>
+    <label class="srow"><span>Хэмжилтийн горим<small>Сүнс, профайл, тоглоомын дууг нууж зөвхөн бодит мэдрэгчийн утга харуулна</small></span><input type="checkbox" id="measC" ${ui.measure ? 'checked' : ''}></label>
+    <label class="srow"><span>Демо горим<small>Мэдрэгчгүй компьютер дээр турших — хиймэл утга, «ДЕМО» гэж тэмдэглэгдэнэ</small></span><input type="checkbox" id="demoC" ${DEMO.on ? 'checked' : ''}></label>
+    <button class="btn p" id="csvB">📊 Лог файл (CSV) — ${L.rows.length} мөр</button>
+    <button class="btn" id="setClose">Хаах</button>`;
+  s.querySelectorAll('[data-res]').forEach(b => b.onclick = async () => { if (REC.on) return toast('Бичлэг хийж байна'); C.res = +b.dataset.res; await startCamera(); renderSettings(); });
+  if ($('exR')) $('exR').oninput = e => { $('exV').textContent = '+' + (+e.target.value).toFixed(1); applyExposure(+e.target.value); };
+  $('torchC').onchange = e => applyTorch(e.target.checked);
+  $('stampC').onchange = e => ui.stamp = e.target.checked;
+  if ($('lensB')) $('lensB').onclick = async () => {
+    if (REC.on) return toast('Бичлэг хийж байна');
+    C.devIdx = (C.devIdx + 1) % C.deviceIds.length; await startCamera(); renderSettings();
+  };
+  $('sensR').oninput = e => { L.sens = MAG.sens = +e.target.value; $('sensV').textContent = Math.round(L.sens * 100) + '%'; };
+  $('taC').onchange = e => ui.torchAlert = e.target.checked;
+  $('demoC').onchange = e => setDemo(e.target.checked);
+  $('measC').onchange = async e => { const input=e.target, on=input.checked; if (SES.saving || REC.on) { input.checked=ui.measure; toast('Бичлэг/хадгалалт дууссаны дараа горим солино уу'); return; } input.disabled=true; await SES.save(true); setMeasure(on); input.disabled=false; };
+  $('csvB').onclick = () => { closeSheets(); const d = new Date(); showEvidence(new Blob([L.csv()], { type: 'text/csv' }), `ghostlog_${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}_${two(d.getHours())}${two(d.getMinutes())}.csv`, 'csv'); };
+  $('setClose').onclick = closeSheets;
+}
+
+async function setDemo(on) {
+  if (DEMO.on === on) return;
+  if (SES.saving || REC.on) { $('demoC').checked=DEMO.on; toast('Бичлэг/хадгалалт дууссаны дараа горим солино уу'); return; }
+  await SES.save(true);
+  DEMO.on = on; DEMO.t = 0; setMeasure(ui.measure);
+  if (!on) { S.hasOri = false; E.recalibrate(); }
+  toast(on ? 'Демо горим — утгууд хиймэл, бодит хэмжилт биш' : 'Бодит мэдрэгчийн горим');
+}
+
+async function renderSessions() {
+  const el = $('sessions'), mins = Math.floor(L.now() / 60), secs = Math.floor(L.now() % 60);
+  el.innerHTML = `<h3>📁 Бүртгэл (session)</h3>
+    <div class="sec">Одоогийн бүртгэлийн нэр</div>
+    <input type="text" id="sesName" maxlength="80" placeholder="Өрөө · Туршилт 01">
+    <div class="note">${two(mins)}:${two(secs)} • ${L.rows.length} мөр • ${DEMO.on ? 'ДЕМО' : ui.measure ? 'ХЭМЖИЛТ' : 'AR СИМУЛЯЦИ'} • зөвхөн энэ утсанд хадгалагдана</div>
+    <div class="sec">Тэмдэглэгээ</div>
+    <input type="text" id="sesNote" maxlength="180" placeholder="Жишээ: хаалга хөдөлсөн">
+    <button class="btn" id="sesFlag">⚑ Момент тэмдэглэх</button>
+    <label class="srow"><span>Микрофоны дуу бичих<small>${MIC.stream ? 'Дараагийн бүртгэлээс эхэлнэ' : 'Эхлээд 🎤-г асаана уу'}</small></span><input type="checkbox" id="sesAudio" ${SES.recordAudio ? 'checked' : ''}></label>
+    <button class="btn p" id="sesSave">■ Дуусгаж хадгалах, шинийг эхлүүлэх</button>
+    <ol class="evlist" id="sesEvents"></ol>
+    <h3 style="margin-top:16px">Хадгалсан бүртгэлүүд</h3><div id="sesHistory" class="note">Ачаалж байна…</div>
+    <button class="btn" id="sesClose">Хаах</button>`;
+  $('sesName').value = SES.name;
+  const evs = $('sesEvents');
+  if (!SES.events.length) evs.innerHTML = '<li style="color:#ffffff61">Тэмдэглэгээ алга</li>';
+  for (const e of SES.events.slice(0, 30)) { const li = document.createElement('li'), sm = document.createElement('small'); li.textContent = (e.auto ? '⚑ ' : '✎ ') + e.label; sm.textContent = new Date(e.utc).toLocaleTimeString(); li.append(sm); evs.append(li); }
+  $('sesName').oninput = e => SES.name = e.target.value.trim() || 'Туршилт';
+  $('sesFlag').onclick = () => { const n = $('sesNote').value.trim(); L.manual(n); E.addLog('⚑ ' + (n || 'Гар тэмдэг')); $('sesNote').value = ''; renderSessions(); };
+  $('sesAudio').onchange = e => { SES.recordAudio = e.target.checked; if (e.target.checked && !MIC.stream) toast('Эхлээд 🎤 микрофоноо асаана уу'); };
+  $('sesSave').onclick = async () => { await SES.save(); renderSessions(); };
+  $('sesClose').onclick = closeSheets;
+  try {
+    const list = (await SES.tx('readonly', s => s.getAll())).sort((a, b) => b.id - a.id), h = $('sesHistory');
+    if (!h) return;
+    h.className = ''; h.innerHTML = list.length ? '' : '<div class="note">Хадгалсан бүртгэл алга.</div>';
+    for (const r of list) {
+      const d = document.createElement('div'); d.className = 'saved';
+      const h4 = document.createElement('h4'), sm = document.createElement('small');
+      h4.textContent = r.name; sm.textContent = `${new Date(r.utc).toLocaleString()} · ${Math.round(r.duration)} сек · ${r.rows.length} мөр · ${(r.mode === 'demo' || r.mode === 'all_simulated') ? 'ДЕМО' : r.mode === 'measure' ? 'ХЭМЖИЛТ' : 'AR СИМУЛЯЦИ'}`;
+      d.append(h4, sm);
+      const btn = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; d.append(b); };
+      btn('CSV', () => { closeSheets(); showEvidence(new Blob([L.csvOf(r.rows)], { type: 'text/csv' }), `ghost-${r.id}.csv`, 'csv'); });
+      btn('JSON', () => { const { audioBlob, ...data } = r; closeSheets(); showEvidence(new Blob([JSON.stringify({ header: L.header, ...data }, null, 2)], { type: 'application/json' }), `ghost-${r.id}.json`, 'csv'); });
+      btn('Устгах', async () => { if (confirm('Энэ бүртгэлийг устгах уу?')) { await SES.tx('readwrite', s => s.delete(r.id)); renderSessions(); } });
+      if (r.audioBlob && r.audioBlob.size) { const a = document.createElement('audio'); a.controls = true; a.src = URL.createObjectURL(r.audioBlob); d.append(a); }
+      h.append(d);
+    }
+  } catch (e) { const h = $('sesHistory'); if (h) h.textContent = 'Браузерын хадгалалт боломжгүй (Private горим?)'; }
+}
+
+// ---------------------------------------------------------------- controls
+document.querySelectorAll('.mode').forEach(b => b.onclick = () => {
+  ui.mode = b.dataset.mode; document.querySelectorAll('.mode').forEach(x => x.classList.toggle('on', x === b));
+  video.classList.toggle('night', ui.mode === 'night'); video.classList.toggle('spectrum', ui.mode === 'spectrum');
+  $('tint').className = ui.mode;
+});
+$('graphTog').onclick = e => { ui.graph = !ui.graph; e.currentTarget.classList.toggle('on', ui.graph); };
+$('laserTog').onclick = e => { ui.laser = !ui.laser; e.currentTarget.classList.toggle('on', ui.laser); };
+$('soundBtn').onclick = e => { A.on = !A.on; e.currentTarget.textContent = A.on ? '🔊' : '🔇'; if (A.ctx) A.ctx.resume(); };
+$('recalBtn').onclick = () => { E.recalibrate(); measureMagBaseline(); toast('Дахин тохируулж байна'); };
+$('flipBtn').onclick = flipCamera;
+$('cameraRetry').onclick = startCamera;
+$('setBtn').onclick = () => { renderSettings(); openSheet($('settings')); };
+$('flagBtn').onclick = () => { L.manual(); E.addLog('⚑ Гар тэмдэг тавив'); };
+$('sessBtn').onclick = () => { renderSessions(); openSheet($('sessions')); };
+$('micTog').onclick = toggleMic;
+$('magBaseBtn').onclick = () => measureMagBaseline();
+$('calibDemo').onclick = () => setDemo(true);
+$('shutter').onclick = takePhoto;
+$('recBtn').onclick = () => REC.toggle();
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (REC.on) REC.stop(); stopCamera(); stopMic(); SES.save(true); if (A.ctx) A.ctx.suspend(); }
+  else if (!$('app').classList.contains('hidden')) { startCamera(); if (A.ctx) A.ctx.resume(); requestWake(); }
+});
+window.addEventListener('pagehide', () => { stopCamera(); if (MIC.stream) MIC.stream.getTracks().forEach(t => t.stop()); });
+let wake = null;
+async function requestWake() { try { wake = await navigator.wakeLock.request('screen'); } catch (_) {} }
+
+// ---------------------------------------------------------------- start
+async function begin(measure) {
+  // iOS: зөвшөөрлийг товч дарсан мөчид шууд асуух ёстой
+  splashRun = false; $('splash').classList.add('hidden'); $('app').classList.remove('hidden'); resize();
+  const cameraRequest = startCamera();
+  const perms = [];
+  try { if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') perms.push(DeviceOrientationEvent.requestPermission()); } catch (_) {}
+  try { if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') perms.push(DeviceMotionEvent.requestPermission()); } catch (_) {}
+  initAudio();
+  const res = await Promise.allSettled(perms);
+  if (res.some(r => r.status === 'fulfilled' && r.value !== 'granted')) toast('Хөдөлгөөн/чиглэлийн зөвшөөрөл олгогдоогүй — радар ажиллахгүй', 4000);
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Камер дэмжихгүй браузер (HTTPS шаардлагатай)', 4000); }
+  splashRun = false; $('splash').classList.add('hidden'); $('app').classList.remove('hidden');
+  setMeasure(measure); if (measure) SES.name = 'Хэмжилт';
+  resize(); startMagnetometer(); requestWake();
+  await cameraRequest;
+  requestAnimationFrame(loop);
+}
+$('startBtn').onclick = () => begin(false);
+$('measureBtn').onclick = () => begin(true);
+
+loadSprite().then(() => requestAnimationFrame(splashLoop)).catch(() => {});
+SES.open().catch(() => {});
+</script>
+</body>
+</html>
