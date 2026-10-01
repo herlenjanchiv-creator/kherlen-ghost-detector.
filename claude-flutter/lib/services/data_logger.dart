@@ -50,6 +50,8 @@ String _n(double? v, int d) => v == null ? '' : v.toStringAsFixed(d);
 ///  • огцом өөрчлөлтийг автоматаар "Spike flag" болгоно (мэдрэмж тохируулна)
 ///  • гараар, тайлбартай flag тавина
 class DataLogger extends ChangeNotifier {
+  DataLogger({Future<Directory> Function()? directory}) : _directory = directory ?? getApplicationDocumentsDirectory;
+  final Future<Directory> Function() _directory;
   static const int windowSamples = 600; // 60 сек × 10 Гц
   static const header = [
     'utc', 'elapsed_s', 'mode', 'mag_source', 'mag_accuracy', 'bx_uT', 'by_uT', 'bz_uT', 'b_total_uT',
@@ -76,7 +78,7 @@ class DataLogger extends ChangeNotifier {
 
   Future<void> start() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await _directory();
       final d = _start;
       String two(int n) => n.toString().padLeft(2, '0');
       final name = 'ghostlog_${d.year}${two(d.month)}${two(d.day)}_${two(d.hour)}${two(d.minute)}${two(d.second)}.csv';
