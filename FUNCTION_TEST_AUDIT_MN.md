@@ -30,7 +30,11 @@ Live: https://ghost-lens-live-lab.herlenjanchiv.chatgpt.site
 - finite vector, sensor timeout/fallback, reconnect, baseline болон cancel.
 - CSV actual values, unavailable blanks, Unicode/quotes, measurement/game provenance.
 
-Compile/test-ийн actual conclusion-оор эцсийн үр дүнг шинэчилнэ.
+Android: analyze PASS, 9 tests PASS, debug APK build/upload PASS.
+iOS: 9 tests PASS, release unsigned compile/upload PASS.
+Run conclusion: SUCCESS.
+
+Энэ нотолгоо native commit 6d0c47cab069d2f8c5933947f36d45097bf545de-д хамаарна.
 
 ## Дуусаагүй болон төхөөрөмж дээр шалгах зүйлс
 
