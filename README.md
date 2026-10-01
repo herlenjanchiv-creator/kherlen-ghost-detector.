@@ -31,3 +31,8 @@ Verification: node checks plus core, AR DOM/camera, sound, multilingual mocks an
 
 ## v7 user-marked speech question/reply journal
 Final browser/local transcripts have explicit user annotation buttons. Mark own utterance as a question, then mark a later transcript as a reply to that question. No automatic inference of a human identity, conversational intent, spirit speech or confirmed meaning. Acoustic heuristic events cannot be annotated as speech. Closing question linkage prevents subsequent replies. Active session CSV includes annotation flags; JSON soundEvents and interactions include text, IDs, question reference, utterance/annotation UTC and source, with meaningConfirmed=false. Audio recording remains opt-in; local clip playback is the last short clip only. Past saved sessions are not edited by annotations in later sessions.
+
+## v8 mobile sensor and photo diagnostics
+Magnetometer availability/policy/secure context detected up front; unsupported control disabled with explicit native iPhone requirement. No external Bluetooth/USB protocol implemented. Device motion opt-in distinguishes denied permission, pending permission, valid data, five-second no-data timeout and stale readings. Async permission completion is cancelled on background/demo. No guessed gravity-subtraction fallback.
+
+Main camera photo uses inline preview with user-triggered share/download instead of an automatic download navigation. Both main and AR routes cap photo size to 1280px, prevent concurrent capture, bound JPEG encoding to eight seconds, report errors and release canvas memory. HTML references app v8 to bypass previous app URL cache. Native sensor/camera and physical Safari tests remain outstanding; regression tests use mocks.

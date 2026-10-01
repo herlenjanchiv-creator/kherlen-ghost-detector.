@@ -1079,17 +1079,21 @@ function ghostInVideo(vw, vh) {
   let x = (pose.x - m.ox) / m.s; const y = (pose.y - m.oy) / m.s, h = pose.h / m.s;
   return { x, y, h };
 }
+let photoBusy=false;
 async function takePhoto() {
-  if (!C.stream || !video.videoWidth) return;
+  if(photoBusy)return;photoBusy=true;$('shutter').disabled=true;let c;try {
+  if (!C.stream || video.readyState<2 || !video.videoWidth || !video.videoHeight) {toast('Камерын дүрс бэлэн болоогүй');return;}
   ui.shutter = 1; vibrate(30);
-  const vw = video.videoWidth, vh = video.videoHeight, sc = Math.min(1, 3000 / Math.max(vw, vh));
+  const vw = video.videoWidth, vh = video.videoHeight, sc = Math.min(1, 1280 / Math.max(vw, vh));
   const w = Math.round(vw * sc), h = Math.round(vh * sc);
-  const c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d');
+  c = document.createElement('canvas'); c.width = w; c.height = h; const ctx = c.getContext('2d');
   ctx.save(); if (C.front) { ctx.translate(w, 0); ctx.scale(-1, 1); } ctx.drawImage(video, 0, 0, w, h); ctx.restore();
   applyMatrix(ctx, w, h, ui.mode);
   if (!ui.measure && pose.op > .02) { const g = ghostInVideo(vw, vh); drawGhost(ctx, g.x * sc, g.y * sc, g.h * sc, performance.now() / 1000, pose.op, E.rageVisual, .35 + .4 * E.rageVisual); }
   drawStamp(ctx, w, h, [captureLabel(), ...(ui.stamp ? stampLines() : [])]);
-  c.toBlob(b => showEvidence(b, `ghost_${Date.now()}.jpg`, 'image'), 'image/jpeg', .92);
+  const blob = await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Зураг боловсруулах хугацаа хэтэрсэн')),8000);c.toBlob(b=>{clearTimeout(timer);b?.size?resolve(b):reject(Error('Зураг үүссэнгүй'))},'image/jpeg',.85)});
+  showEvidence(blob, `ghost_${Date.now()}.jpg`, 'image');
+  }catch(e){toast(e.message||'Зураг авахад алдаа гарлаа')}finally{if(c){c.width=0;c.height=0}photoBusy=false;$('shutter').disabled=false}
 }
 
 // ---------------------------------------------------------------- evidence: video (сүнстэй хамт)
