@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths: ['claude-flutter/**', '.github/workflows/native-build.yml']
   workflow_dispatch:
+concurrency:
+  group: native-build-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -24,7 +27,7 @@ jobs:
           cd "$RUNNER_TEMP/ghost_detector"
           flutter pub get
           flutter analyze --no-fatal-infos
-          flutter test
+          flutter test --timeout 60s
       - name: Build Android test APK
         run: |
           cd "$RUNNER_TEMP/ghost_detector"
@@ -51,7 +54,7 @@ jobs:
         run: |
           cd "$RUNNER_TEMP/ghost_detector"
           flutter pub get
-          flutter test
+          flutter test --timeout 60s
           flutter build ios --release --no-codesign
           tar -czf "$GITHUB_WORKSPACE/ghost-lens-ios-unsigned.tar.gz" -C build/ios/iphoneos Runner.app
       - uses: actions/upload-artifact@v4
