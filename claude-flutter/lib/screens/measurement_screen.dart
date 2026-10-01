@@ -76,7 +76,7 @@ class _MeasurementScreenState extends State<MeasurementScreen> with WidgetsBindi
         Text(tr('БОДИТ СОРОНЗОН ХЭМЖИЛТ', 'REAL MAGNETIC MEASUREMENT')),
         const SizedBox(height: 16),
         Center(child: SizedBox(width: 280, height: 280, child: Stack(alignment: Alignment.center, children: [
-          AnimatedBuilder(animation: _radar, builder: (_, _) => Transform.rotate(angle: _radar.value * 2 * math.pi,
+          AnimatedBuilder(animation: _radar, builder: (context, child) => Transform.rotate(angle: _radar.value * 2 * math.pi,
             child: Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: color),
               gradient: SweepGradient(colors: [color.withValues(alpha: 0.25), Colors.transparent]))))),
           Container(width: 180, height: 180, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: color.withValues(alpha: 0.4)))),
