@@ -1,10 +1,10 @@
 {
   "name": "kherlen-ghost-lens",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --check dist/app.mjs && node --check dist/whisper-worker.mjs && node test-ar.mjs && node test-camera.mjs && node test-local-asr.mjs && node test-sound.mjs && node test-v6.mjs && node test.mjs",
+    "test": "node --check dist/app.mjs && node --check dist/whisper-worker.mjs && node test-ar.mjs && node test-camera.mjs && node test-local-asr.mjs && node test-sound.mjs && node test-v6.mjs && node test.mjs && node test-qa.mjs",
     "build": "npm test"
   },
   "engines": {
