@@ -17,7 +17,7 @@ flutter build apk --debug
 
 Windows: `claude-flutter/setup.ps1` мөн адил project үүсгэж, шалгалт хийнэ. Өмнөх project хавтас байвал өөр хоосон destination сонгоно; эх файлыг дарж устгахгүй.
 
-iPhone/iPad: macOS + Xcode + CocoaPods хэрэгтэй. `flutter build ios --release --no-codesign` нь зөвхөн compile шалгана; unsigned Runner.app нь утсанд суулгах файл биш. Xcode Runner target дээр өөрийн Apple team сонгоод төхөөрөмжөө холбоод `flutter run --release` ашиглана. TestFlight/App Store-д Apple Developer signing болон тусдаа distribution шаардлагатай.
+iPhone/iPad: macOS 15 + Xcode 26.3 + CocoaPods хэрэгтэй. `flutter build ios --release --no-codesign` нь зөвхөн compile шалгана; unsigned Runner.app нь утсанд суулгах файл биш. Xcode Runner target дээр өөрийн Apple team сонгоод төхөөрөмжөө холбоод `flutter run --release` ашиглана. TestFlight/App Store-д Apple Developer signing болон тусдаа distribution шаардлагатай.
 
 ## Автомат шалгалт
 
