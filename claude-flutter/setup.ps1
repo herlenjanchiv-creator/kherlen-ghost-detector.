@@ -64,21 +64,20 @@ Write-Host "AndroidManifest.xml шинэчлэгдлээ" -ForegroundColor Green
 $plist = Join-Path $dst "ios\Runner\Info.plist"
 if (Test-Path $plist) {
   $p = [System.IO.File]::ReadAllText($plist)
-  if ($p -notmatch "NSCameraUsageDescription") {
-    $keys = @"
-	<key>NSCameraUsageDescription</key>
-	<string>Орчныг скан хийж сүнс хайхад камер шаардлагатай</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Видео бичлэгт дуу (EVP) бичихэд микрофон хэрэгтэй</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Зураг, видеог галерейд хадгална</string>
-</dict>
-</plist>
-"@
-    $p = [regex]::Replace($p, "</dict>\s*</plist>\s*$", $keys)
-    Write-NoBom $plist $p
-    Write-Host "Info.plist шинэчлэгдлээ" -ForegroundColor Green
+  $usageDescriptions = [ordered]@{
+    NSCameraUsageDescription = "Орчны зураг, видео авахад камер ашиглана"
+    NSMicrophoneUsageDescription = "Орчны дуу, ярианы бичлэгт микрофон ашиглана"
+    NSPhotoLibraryAddUsageDescription = "Зураг, видеог Photos-д хадгална"
+    NSMotionUsageDescription = "Хөдөлгөөн, чичиргээ, соронзон орны бодит хэмжилтэд мэдрэгч ашиглана"
   }
+  foreach ($key in $usageDescriptions.Keys) {
+    if ($p -notmatch "<key>$key</key>") {
+      $entry = "`t<key>$key</key>`r`n`t<string>$($usageDescriptions[$key])</string>`r`n</dict>`r`n</plist>"
+      $p = [regex]::Replace($p, "</dict>\s*</plist>\s*$", $entry)
+    }
+  }
+  Write-NoBom $plist $p
+  Write-Host "Info.plist шинэчлэгдлээ" -ForegroundColor Green
 }
 
 Write-Host "== Багцууд татаж байна ==" -ForegroundColor Cyan

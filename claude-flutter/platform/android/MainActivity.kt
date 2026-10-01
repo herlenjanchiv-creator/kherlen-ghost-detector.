@@ -34,7 +34,10 @@ class MagnetometerHandler(context: Context) : EventChannel.StreamHandler, Sensor
             return
         }
         sink = events
-        sensorManager.registerListener(this, sensor, 50_000) // 50 мс = 20 Гц
+        if (!sensorManager.registerListener(this, sensor, 50_000)) {
+            sink = null
+            events.error("unavailable", "Magnetometer listener could not start", null)
+        } // 50 мс = 20 Гц
     }
 
     override fun onCancel(arguments: Any?) {

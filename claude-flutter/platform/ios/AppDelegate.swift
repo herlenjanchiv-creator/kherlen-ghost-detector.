@@ -32,8 +32,14 @@ import CoreMotion
     let frames = CMMotionManager.availableAttitudeReferenceFrames()
     let frame: CMAttitudeReferenceFrame = frames.contains(.xMagneticNorthZVertical)
       ? .xMagneticNorthZVertical : .xArbitraryCorrectedZVertical
-    motion.startDeviceMotionUpdates(using: frame, to: OperationQueue.main) { [weak self] dm, _ in
-      guard let self = self, let dm = dm, let sink = self.sink else { return }
+    motion.startDeviceMotionUpdates(using: frame, to: OperationQueue.main) { [weak self] dm, error in
+      guard let self = self, let sink = self.sink else { return }
+      if let error = error {
+        self.motion.stopDeviceMotionUpdates()
+        sink(FlutterError(code: "motion_error", message: error.localizedDescription, details: nil))
+        return
+      }
+      guard let dm = dm else { return }
       let f = dm.magneticField
       let acc: Int
       switch f.accuracy {
